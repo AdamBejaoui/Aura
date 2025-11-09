@@ -1,0 +1,9 @@
+# Node.js
+node_modules/
+*.log
+
+# Env files
+.env
+
+# Vite / build
+dist/

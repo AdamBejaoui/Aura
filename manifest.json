@@ -1,0 +1,16 @@
+{
+  "name": "LuxeLayer",
+  "short_name": "LuxeLayer",
+  "description": "Premium clothing for the modern connoisseur.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f4f1",
+  "theme_color": "#f6f4f1",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
