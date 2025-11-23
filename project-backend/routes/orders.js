@@ -11,7 +11,7 @@ router.post('/', async (req, res) => {
     // Validate products exist and get current prices
     const items = [];
     let total = 0;
-    
+
     for (const item of req.body.items) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -41,7 +41,7 @@ router.post('/', async (req, res) => {
 // Get all orders (admin only)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const orders = await Order.find().populate('items.productId', 'name price').sort({ createdAt: -1 });
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -53,7 +53,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status } = req.body;
     const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-    
+
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
@@ -62,7 +62,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       req.params.id,
       { status },
       { new: true }
-    ).populate('items.productId', 'name price');
+    );
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
@@ -70,6 +70,19 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     res.json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete order (admin only)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    res.json({ message: 'Order deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
