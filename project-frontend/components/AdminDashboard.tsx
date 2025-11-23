@@ -194,7 +194,6 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
       const config = {
         headers: {
           ...authHeader.headers,
-          'Content-Type': 'multipart/form-data',
         },
       };
 
