@@ -2,6 +2,7 @@ const express = require('express');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { authenticateToken } = require('../middleware/auth');
+const { sendOrderNotification } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ router.post('/', async (req, res) => {
   try {
     // Validate products exist and get current prices
     const items = [];
+    const productDetails = []; // For email
     let total = 0;
 
     for (const item of req.body.items) {
@@ -19,6 +21,11 @@ router.post('/', async (req, res) => {
       }
       items.push({
         productId: product._id,
+        quantity: item.quantity,
+        price: product.price
+      });
+      productDetails.push({
+        name: product.name,
         quantity: item.quantity,
         price: product.price
       });
@@ -32,6 +39,12 @@ router.post('/', async (req, res) => {
     });
 
     const newOrder = await order.save();
+
+    // Send email notification (async, don't wait for it)
+    sendOrderNotification(newOrder, productDetails).catch(err =>
+      console.error('Email notification failed:', err)
+    );
+
     res.status(201).json(newOrder);
   } catch (error) {
     res.status(400).json({ message: error.message });
