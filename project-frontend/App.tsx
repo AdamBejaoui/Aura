@@ -185,26 +185,26 @@ function Store() {
       </div>
 
       {/* Header */}
-    <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 lg:px-10 py-4">
-  <div className="max-w-7xl mx-auto flex justify-between items-center">
-    
-    {/* LEFT: Star + Aura */}
-    <div className="flex items-center gap-2">
-      
-      {/* Glow Star */}
-      <div className="relative w-4 h-4 
-          bg-blue-500 
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 lg:px-10 py-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+
+          {/* LEFT: Star + Aura */}
+          <div className="flex items-center gap-2">
+
+            {/* Glow Star */}
+            <div className="relative w-4 h-4 
+          bg-gray-900 dark:bg-blue-500 
           [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
           before:content-[''] before:absolute before:inset-0 
-          before:bg-blue-500 before:blur-md before:opacity-60">
-      </div>
+          before:bg-gray-900 dark:before:bg-blue-500 before:blur-md before:opacity-60">
+            </div>
 
-      {/* Text */}
-      <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-600">
-        Aura
-      </span>
+            {/* Text */}
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-black dark:from-blue-500 dark:to-blue-600">
+              Aura
+            </span>
 
-    </div>
+          </div>
 
           <div className="flex items-center gap-4">
             {/* Theme Toggle */}
@@ -221,9 +221,9 @@ function Store() {
               onClick={() => toggleCheckout(true)}
               className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <ShoppingCart className="h-6 w-6 text-blue-500" />
+              <ShoppingCart className="h-6 w-6 text-gray-900 dark:text-blue-500" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
@@ -250,8 +250,8 @@ function Store() {
               key={category}
               onClick={() => setActiveCategory(category)}
               className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${activeCategory === category
-                  ? "text-white bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700"
+                ? "text-white bg-gradient-to-r from-gray-900 to-black dark:from-blue-500 dark:to-blue-600 shadow-lg shadow-gray-900/25 dark:shadow-blue-500/25"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700"
                 }`}
             >
               {category}
@@ -268,7 +268,7 @@ function Store() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search pieces..."
-              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-blue-500/20 focus:border-gray-900 dark:focus:border-blue-500 transition-all"
             />
           </div>
         </div>
@@ -283,7 +283,7 @@ function Store() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/30 transition-all duration-500 hover:-translate-y-2"
+                className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-gray-900/10 dark:hover:shadow-blue-500/20 hover:border-gray-300 dark:hover:border-blue-500/30 transition-all duration-500 hover:-translate-y-2"
               >
                 <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 dark:bg-slate-800">
                   <img
@@ -296,7 +296,7 @@ function Store() {
                     }
                   />
                   <div className="absolute top-3 left-3">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-blue-600 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full">
                       {product.category}
                     </span>
                   </div>

@@ -48,11 +48,11 @@ const ProductDetailModal = ({
   if (!isOpen || !product) return null;
 
   return (
-    <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
     >
-      <div 
+      <div
         className="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-gray-200 dark:ring-slate-800 transition-all"
         onClick={(e) => e.stopPropagation()}
       >
@@ -69,9 +69,8 @@ const ProductDetailModal = ({
             {images.map((img, idx) => (
               <div
                 key={idx}
-                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                  idx === activeIndex ? "opacity-100 z-10" : "opacity-0 z-0"
-                }`}
+                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${idx === activeIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+                  }`}
               >
                 <img
                   src={img}
@@ -86,31 +85,30 @@ const ProductDetailModal = ({
             {images.length > 1 && (
               <>
                 <div className="absolute inset-0 z-20 flex items-center justify-between px-4 pointer-events-none">
-                    <button
-                        onClick={prevSlide}
-                        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 transition-colors"
-                    >
-                        <ChevronLeft className="h-6 w-6" />
-                    </button>
-                    <button
-                        onClick={nextSlide}
-                        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 transition-colors"
-                    >
-                        <ChevronRight className="h-6 w-6" />
-                    </button>
+                  <button
+                    onClick={prevSlide}
+                    className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 transition-colors"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 transition-colors"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
                 </div>
-                
+
                 {/* Dots Indicator */}
                 <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-                    {images.map((_, idx) => (
+                  {images.map((_, idx) => (
                     <button
-                        key={idx}
-                        onClick={() => { setActiveIndex(idx); setIsAutoplaying(false); }}
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                        idx === activeIndex ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80"
+                      key={idx}
+                      onClick={() => { setActiveIndex(idx); setIsAutoplaying(false); }}
+                      className={`h-2 rounded-full transition-all duration-300 ${idx === activeIndex ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80"
                         }`}
                     />
-                    ))}
+                  ))}
                 </div>
               </>
             )}
@@ -120,8 +118,8 @@ const ProductDetailModal = ({
           <div className="flex flex-col justify-between p-8 md:p-10 overflow-y-auto bg-white dark:bg-slate-900">
             <div className="space-y-6">
               <div>
-                <span className="inline-block rounded-full bg-blue-50 dark:bg-blue-900/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-3">
-                    {product.category}
+                <span className="inline-block rounded-full bg-gray-100 dark:bg-blue-900/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-blue-400 mb-3">
+                  {product.category}
                 </span>
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                   {product.name}
@@ -129,15 +127,15 @@ const ProductDetailModal = ({
               </div>
 
               <div className="flex items-center gap-4">
-                 <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {product.price.toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                    })}
-                 </span>
-                 <span className="text-sm text-green-600 dark:text-green-400 font-medium px-2 py-0.5 bg-green-50 dark:bg-green-900/20 rounded">
-                    In Stock
-                 </span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {product.price.toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </span>
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium px-2 py-0.5 bg-green-50 dark:bg-green-900/20 rounded">
+                  In Stock
+                </span>
               </div>
 
               <div className="prose prose-sm dark:prose-invert">
@@ -145,17 +143,17 @@ const ProductDetailModal = ({
                   {product.description}
                 </p>
               </div>
-              
+
               {/* Added: Extra details (dummy data for visual completeness) */}
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100 dark:border-slate-800">
-                 <div>
-                    <span className="block text-xs text-gray-500 uppercase">Material</span>
-                    <span className="font-medium text-gray-900 dark:text-white">Premium Cotton</span>
-                 </div>
-                 <div>
-                    <span className="block text-xs text-gray-500 uppercase">Fit</span>
-                    <span className="font-medium text-gray-900 dark:text-white">Regular Fit</span>
-                 </div>
+                <div>
+                  <span className="block text-xs text-gray-500 uppercase">Material</span>
+                  <span className="font-medium text-gray-900 dark:text-white">Premium Cotton</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-gray-500 uppercase">Fit</span>
+                  <span className="font-medium text-gray-900 dark:text-white">Regular Fit</span>
+                </div>
               </div>
             </div>
 
@@ -165,7 +163,7 @@ const ProductDetailModal = ({
                   onAddToCart?.(product);
                   onClose();
                 }}
-                className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-gray-900 dark:bg-white px-8 py-4 text-white dark:text-gray-900 transition-all hover:bg-blue-600 dark:hover:bg-blue-50 hover:shadow-lg hover:shadow-blue-500/25 active:scale-[0.98]"
+                className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-gray-900 dark:bg-white px-8 py-4 text-white dark:text-gray-900 transition-all hover:bg-gray-700 dark:hover:bg-blue-50 hover:shadow-lg hover:shadow-gray-900/25 dark:hover:shadow-blue-500/25 active:scale-[0.98]"
               >
                 <ShoppingBag className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:rotate-12" />
                 <span className="font-bold text-lg">Add to Cart</span>
