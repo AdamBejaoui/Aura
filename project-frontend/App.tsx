@@ -185,13 +185,26 @@ function Store() {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 lg:px-10 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
-              Aura
-            </h1>
-          </div>
+    <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 lg:px-10 py-4">
+  <div className="max-w-7xl mx-auto flex justify-between items-center">
+    
+    {/* LEFT: Star + Aura */}
+    <div className="flex items-center gap-2">
+      
+      {/* Glow Star */}
+      <div className="relative w-4 h-4 
+          bg-blue-500 
+          [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
+          before:content-[''] before:absolute before:inset-0 
+          before:bg-blue-500 before:blur-md before:opacity-60">
+      </div>
+
+      {/* Text */}
+      <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-600">
+        Aura
+      </span>
+
+    </div>
 
           <div className="flex items-center gap-4">
             {/* Theme Toggle */}

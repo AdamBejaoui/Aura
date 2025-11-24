@@ -813,8 +813,15 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
       <aside className="w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col z-20 h-full">
         <div className="p-6 border-b border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-tr from-blue-500 to-blue-600 rounded-lg"></div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-600">
+<div className="relative w-4 h-4 
+     bg-blue-500 
+     [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
+     before:content-[''] before:absolute before:inset-0 
+     before:bg-blue-500 before:blur-md before:opacity-60
+     ">
+</div>
+
+  <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-600">
               Aura Admin
             </span>
           </div>
