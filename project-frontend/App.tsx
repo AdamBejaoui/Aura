@@ -143,10 +143,10 @@ function Store() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-900 dark:bg-black dark:text-white transition-colors duration-300">
         <div className="absolute inset-0 -z-10 opacity-30">
           <Plasma
-            color={isDark ? '#3b82f6' : '#3b82f6'}
+            color={isDark ? '#ffffff' : '#ffffff'}
             speed={0.5}
             direction="forward"
             scale={1.2}
@@ -155,7 +155,7 @@ function Store() {
           />
         </div>
         <div className="relative text-xl font-medium flex items-center gap-3">
-          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-6 h-6 border-2 border-stone-900 dark:border-white border-t-transparent rounded-full animate-spin"></div>
           Loading store...
         </div>
       </div>
@@ -164,18 +164,18 @@ function Store() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black transition-colors duration-300">
         <p className="text-gray-600 dark:text-gray-400">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 font-sans transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white font-sans transition-colors duration-300 relative">
       {/* Plasma Background Effect */}
       <div className="absolute inset-0 pointer-events-none opacity-60 dark:opacity-50">
         <Plasma
-          color={isDark ? '#3b82f6' : '#3b82f6'}
+          color={isDark ? '#ffffff' : '#ffffff'}
           speed={0.5}
           direction="forward"
           scale={1.5}
@@ -185,7 +185,7 @@ function Store() {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-200 dark:border-slate-800 px-4 sm:px-6 lg:px-10 py-4">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-neutral-900/80 backdrop-blur border-b border-gray-200 dark:border-neutral-800 px-4 sm:px-6 lg:px-10 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
 
           {/* LEFT: Star + Aura */}
@@ -193,14 +193,14 @@ function Store() {
 
             {/* Glow Star */}
             <div className="relative w-4 h-4 
-          bg-gray-900 dark:bg-blue-500 
+          bg-gray-900 dark:bg-white 
           [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
           before:content-[''] before:absolute before:inset-0 
-          before:bg-gray-900 dark:before:bg-blue-500 before:blur-md before:opacity-60">
+          before:bg-gray-900 dark:before:bg-white before:blur-md before:opacity-60">
             </div>
 
             {/* Text */}
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-black dark:from-blue-500 dark:to-blue-600">
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-black dark:text-white">
               Aura
             </span>
 
@@ -210,7 +210,7 @@ function Store() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              className="p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
               aria-label="Toggle theme"
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -221,9 +221,9 @@ function Store() {
               onClick={() => toggleCheckout(true)}
               className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <ShoppingCart className="h-6 w-6 text-gray-900 dark:text-blue-500" />
+              <ShoppingCart className="h-6 w-6 text-gray-900 dark:text-white" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-white text-white dark:text-black text-[10px] font-bold rounded-full flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
@@ -250,8 +250,8 @@ function Store() {
               key={category}
               onClick={() => setActiveCategory(category)}
               className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${activeCategory === category
-                ? "text-white bg-gradient-to-r from-gray-900 to-black dark:from-blue-500 dark:to-blue-600 shadow-lg shadow-gray-900/25 dark:shadow-blue-500/25"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700"
+                ? "text-white bg-stone-900 dark:bg-white dark:text-black shadow-lg shadow-stone-900/25 dark:shadow-white/25"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800"
                 }`}
             >
               {category}
@@ -268,7 +268,7 @@ function Store() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search pieces..."
-              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-blue-500/20 focus:border-gray-900 dark:focus:border-blue-500 transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full focus:outline-none focus:ring-2 focus:ring-stone-900/20 dark:focus:ring-white/20 focus:border-stone-900 dark:focus:border-white transition-all"
             />
           </div>
         </div>
@@ -283,9 +283,9 @@ function Store() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="group relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-gray-900/10 dark:hover:shadow-blue-500/20 hover:border-gray-300 dark:hover:border-blue-500/30 transition-all duration-500 hover:-translate-y-2"
+                className="group relative bg-white dark:bg-neutral-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-2xl hover:shadow-gray-900/10 dark:hover:shadow-white/5 hover:border-gray-300 dark:hover:border-stone-900 dark:border-white/30 transition-all duration-500 hover:-translate-y-2"
               >
-                <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 dark:bg-slate-800">
+                <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 dark:bg-neutral-800">
                   <img
                     src={product.images[0]}
                     alt={product.name}
@@ -296,7 +296,7 @@ function Store() {
                     }
                   />
                   <div className="absolute top-3 left-3">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-blue-600 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-stone-300 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-3 py-1.5 rounded-full">
                       {product.category}
                     </span>
                   </div>
@@ -305,7 +305,7 @@ function Store() {
                   <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <button
                       onClick={() => handleOpenModal(product)}
-                      className="w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl text-gray-900 dark:text-white py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-white dark:hover:bg-slate-900 transition-all shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      className="w-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl text-gray-900 dark:text-white py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-white dark:hover:bg-black transition-all shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     >
                       <ShoppingCart className="w-4 h-4" />
                       Quick View

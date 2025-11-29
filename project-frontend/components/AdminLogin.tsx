@@ -55,15 +55,15 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors duration-300">
+    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300">
       {/* Plasma Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-70 dark:opacity-60">
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-70 dark:opacity-40">
         <Plasma
-          color={isDark ? "#6366f1" : "#3b82f6"}
+          color={isDark ? "#ffffff" : "#1c1917"}
           speed={0.5}
           direction="forward"
           scale={1.5}
-          opacity={isDark ? 0.5 : 0.25}
+          opacity={isDark ? 0.2 : 0.15}
           mouseInteractive={false}
         />
       </div>
@@ -72,7 +72,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
         {/* Dark mode toggle */}
         <button
           onClick={toggleTheme}
-          className="absolute right-0 top-0 flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors duration-200"
+          className="absolute right-0 top-0 flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-neutral-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200"
           aria-label="Toggle theme"
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -83,22 +83,22 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
           <div className="flex items-center justify-center gap-2">
             {/* Glowing ✦ Star */}
             <div className="relative w-4 h-4 
-              bg-blue-500
+              bg-stone-900 dark:bg-white
               [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
               before:content-[''] before:absolute before:inset-0
-              before:bg-blue-500 before:blur-md before:opacity-60 animate-pulse">
+              before:bg-stone-900 dark:before:bg-white before:blur-md before:opacity-60 animate-pulse">
             </div>
 
             {/* Aura Text */}
-         <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-600">
+            <span className="text-xl font-bold text-stone-900 dark:text-white">
               Aura admin
             </span>
           </div>
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-8 transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 text-center mb-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-lg border border-gray-100 dark:border-neutral-800 p-8 transition-all duration-300 hover:shadow-xl">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white text-center mb-6">
             Welcome Back
           </h2>
 
@@ -114,7 +114,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Email Address
               </label>
               <input
@@ -122,7 +122,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition"
+                className="w-full px-4 py-3 border border-gray-200 dark:border-neutral-800 bg-white dark:bg-black text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition"
                 required
                 autoComplete="email"
               />
@@ -131,7 +131,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             {/* Password */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-slate-300">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Password
                 </label>
               </div>
@@ -140,7 +140,7 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition"
+                className="w-full px-4 py-3 border border-gray-200 dark:border-neutral-800 bg-white dark:bg-black text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition"
                 required
                 autoComplete="current-password"
               />
@@ -150,11 +150,11 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-3 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-stone-900 hover:bg-black dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black font-medium py-3 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -167,8 +167,8 @@ const AdminLogin = ({ onLogin }: AdminLoginProps) => {
           </form>
 
           {/* Footer */}
-          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-700">
-            <p className="text-center text-sm text-gray-500 dark:text-slate-400">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-neutral-800">
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
               © {new Date().getFullYear()} Aura. All rights reserved.
             </p>
           </div>

@@ -49,23 +49,23 @@ const ProductDetailModal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm transition-opacity"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 px-4 py-6 backdrop-blur-sm transition-opacity"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-gray-200 dark:ring-slate-800 transition-all"
+        className="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white dark:bg-neutral-900 shadow-2xl ring-1 ring-gray-200 dark:ring-neutral-800 transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white md:text-gray-500 md:bg-white md:shadow-sm md:hover:bg-gray-100 dark:md:bg-slate-800 dark:md:text-gray-400 transition-all hover:scale-105"
+          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white md:text-gray-500 md:bg-white md:shadow-sm md:hover:bg-gray-100 dark:md:bg-neutral-800 dark:md:text-gray-400 transition-all hover:scale-105"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="grid gap-0 md:grid-cols-2 h-full md:max-h-[85vh]">
           {/* Image Gallery */}
-          <div className="relative aspect-[4/5] w-full h-full overflow-hidden bg-gray-100 dark:bg-slate-950">
+          <div className="relative aspect-[4/5] w-full h-full overflow-hidden bg-gray-100 dark:bg-black">
             {images.map((img, idx) => (
               <div
                 key={idx}
@@ -115,10 +115,10 @@ const ProductDetailModal = ({
           </div>
 
           {/* Details Section */}
-          <div className="flex flex-col justify-between p-8 md:p-10 overflow-y-auto bg-white dark:bg-slate-900">
+          <div className="flex flex-col justify-between p-8 md:p-10 overflow-y-auto bg-white dark:bg-neutral-900">
             <div className="space-y-6">
               <div>
-                <span className="inline-block rounded-full bg-gray-100 dark:bg-blue-900/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-blue-400 mb-3">
+                <span className="inline-block rounded-full bg-gray-100 dark:bg-stone-900/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-stone-300 mb-3">
                   {product.category}
                 </span>
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
@@ -145,7 +145,7 @@ const ProductDetailModal = ({
               </div>
 
               {/* Added: Extra details (dummy data for visual completeness) */}
-              <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100 dark:border-slate-800">
+              <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100 dark:border-neutral-800">
                 <div>
                   <span className="block text-xs text-gray-500 uppercase">Material</span>
                   <span className="font-medium text-gray-900 dark:text-white">Premium Cotton</span>
@@ -163,7 +163,7 @@ const ProductDetailModal = ({
                   onAddToCart?.(product);
                   onClose();
                 }}
-                className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-gray-900 dark:bg-white px-8 py-4 text-white dark:text-gray-900 transition-all hover:bg-gray-700 dark:hover:bg-blue-50 hover:shadow-lg hover:shadow-gray-900/25 dark:hover:shadow-blue-500/25 active:scale-[0.98]"
+                className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-stone-900 dark:bg-white px-8 py-4 text-white dark:text-black transition-all hover:bg-black dark:hover:bg-gray-200 hover:shadow-lg hover:shadow-stone-900/25 dark:hover:shadow-white/10 active:scale-[0.98]"
               >
                 <ShoppingBag className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:rotate-12" />
                 <span className="font-bold text-lg">Add to Cart</span>

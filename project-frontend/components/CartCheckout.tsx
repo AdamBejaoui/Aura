@@ -111,22 +111,22 @@ const CartCheckout = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6 backdrop-blur-sm transition-all duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 px-4 py-6 backdrop-blur-sm transition-all duration-300"
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-gray-200 dark:ring-slate-800 transition-all duration-300">
+      <div className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white dark:bg-neutral-900 shadow-2xl ring-1 ring-gray-200 dark:ring-neutral-800 transition-all duration-300">
         
         {/* Header with Close Button */}
-        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-neutral-800 px-6 py-4">
           <div className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <ShoppingBag className="h-5 w-5 text-stone-900 dark:text-white" />
             <span className="font-bold text-gray-900 dark:text-white">Checkout</span>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-slate-800 dark:hover:text-gray-300 transition-colors"
+            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-neutral-800 dark:hover:text-gray-300 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -160,7 +160,7 @@ const CartCheckout = ({
           ) : (
             <>
               {/* Left Side: Order Summary */}
-              <div className="w-full md:w-5/12 bg-gray-50/50 dark:bg-slate-900/50 p-6 md:p-8 overflow-y-auto border-b md:border-b-0 md:border-r border-gray-100 dark:border-slate-800">
+              <div className="w-full md:w-5/12 bg-gray-50/50 dark:bg-neutral-900/50 p-6 md:p-8 overflow-y-auto border-b md:border-b-0 md:border-r border-gray-100 dark:border-neutral-800">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Order Summary</h3>
                 
                 {!hasItems ? (
@@ -172,7 +172,7 @@ const CartCheckout = ({
                   <ul className="space-y-6">
                     {items.map((item) => (
                       <li key={item.product.id} className="flex gap-4">
-                        <div className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                        <div className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800">
                           <img
                             src={item.product.images[0]}
                             alt={item.product.name}
@@ -182,23 +182,23 @@ const CartCheckout = ({
                         <div className="flex flex-1 flex-col justify-between">
                           <div>
                             <h4 className="font-medium text-gray-900 dark:text-white line-clamp-1">{item.product.name}</h4>
-                            <p className="text-xs text-blue-500 dark:text-blue-400 mt-0.5">{item.product.category}</p>
+                            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{item.product.category}</p>
                           </div>
                           <div className="flex items-center justify-between mt-2">
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">
                               {formatCurrency(item.product.price)}
                             </span>
-                            <div className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 px-2 py-0.5">
+                            <div className="flex items-center gap-3 bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 px-2 py-0.5">
                                <button 
                                 onClick={() => onUpdateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
-                                className="text-gray-400 hover:text-blue-500 transition-colors"
+                                className="text-gray-400 hover:text-stone-900 dark:hover:text-white transition-colors"
                                >
                                  -
                                </button>
                                <span className="text-xs font-medium w-4 text-center dark:text-gray-200">{item.quantity}</span>
                                <button 
                                 onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                                className="text-gray-400 hover:text-blue-500 transition-colors"
+                                className="text-gray-400 hover:text-stone-900 dark:hover:text-white transition-colors"
                                >
                                  +
                                </button>
@@ -211,10 +211,10 @@ const CartCheckout = ({
                 )}
 
                 {hasItems && (
-                  <div className="mt-8 pt-6 border-t border-gray-200 dark:border-slate-800">
+                  <div className="mt-8 pt-6 border-t border-gray-200 dark:border-neutral-800">
                     <div className="flex items-center justify-between">
                       <span className="text-base font-medium text-gray-900 dark:text-white">Total</span>
-                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      <span className="text-2xl font-bold text-stone-900 dark:text-white">
                         {orderTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}
                       </span>
                     </div>
@@ -223,7 +223,7 @@ const CartCheckout = ({
               </div>
 
               {/* Right Side: Shipping Form */}
-              <div className="w-full md:w-7/12 p-6 md:p-8 overflow-y-auto bg-white dark:bg-slate-900">
+              <div className="w-full md:w-7/12 p-6 md:p-8 overflow-y-auto bg-white dark:bg-neutral-900">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Shipping Details</h3>
                 
                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -240,7 +240,7 @@ const CartCheckout = ({
                           placeholder="John Doe"
                           required
                           disabled={submitting}
-                          className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 pl-10 pr-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:text-white placeholder:text-gray-400"
+                          className="w-full rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 pl-10 pr-4 py-3 text-sm focus:border-stone-500 focus:ring-2 focus:ring-stone-500/20 outline-none transition-all dark:text-white placeholder:text-gray-400"
                         />
                       </div>
                     </div>
@@ -257,7 +257,7 @@ const CartCheckout = ({
                           placeholder="+1 234 567 890"
                           required
                           disabled={submitting}
-                          className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 pl-10 pr-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:text-white placeholder:text-gray-400"
+                          className="w-full rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 pl-10 pr-4 py-3 text-sm focus:border-stone-500 focus:ring-2 focus:ring-stone-500/20 outline-none transition-all dark:text-white placeholder:text-gray-400"
                         />
                       </div>
                     </div>
@@ -276,7 +276,7 @@ const CartCheckout = ({
                         required
                         disabled={submitting}
                         rows={3}
-                        className="w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 pl-10 pr-4 py-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all dark:text-white placeholder:text-gray-400 resize-none"
+                        className="w-full rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 pl-10 pr-4 py-3 text-sm focus:border-stone-500 focus:ring-2 focus:ring-stone-500/20 outline-none transition-all dark:text-white placeholder:text-gray-400 resize-none"
                       />
                     </div>
                   </div>
@@ -292,8 +292,8 @@ const CartCheckout = ({
                                 disabled={submitting}
                                 className={`py-2 rounded-lg text-sm font-medium transition-all ${
                                     size === s
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                                    : 'bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700'
+                                    ? 'bg-stone-900 dark:bg-white text-white dark:text-black shadow-lg shadow-stone-500/30'
+                                    : 'bg-gray-50 dark:bg-neutral-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-neutral-700 hover:border-stone-300 dark:hover:border-neutral-500'
                                 }`}
                             >
                                 {s}
@@ -311,7 +311,7 @@ const CartCheckout = ({
                   <button
                     type="submit"
                     disabled={!hasItems || submitting}
-                    className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-500/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none"
+                    className="w-full rounded-xl bg-gradient-to-r bg-stone-900 dark:bg-white py-4 text-sm font-bold text-white shadow-lg shadow-stone-500/25 transition-all hover:bg-black dark:hover:bg-gray-200 dark:text-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none"
                   >
                     {submitting ? (
                         <span className="flex items-center justify-center gap-2">
