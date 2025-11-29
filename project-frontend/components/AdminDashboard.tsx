@@ -741,19 +741,20 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     <div className="h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white font-sans transition-colors duration-300 overflow-hidden flex">
       <aside className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col z-20 h-full">
         <div className="p-6 border-b border-gray-100 dark:border-neutral-800">
-          <div className="flex items-center gap-3">
-            <div className="relative w-4 h-4 
-       bg-stone-900 
-       [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
-       before:content-[''] before:absolute before:inset-0 
-       before:bg-stone-900 before:blur-md before:opacity-60
-       ">
-            </div>
+<div className="flex items-center gap-3">
+  <div
+    className="relative w-4 h-4 
+    bg-stone-900 dark:bg-white
+    [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
+    before:content-[''] before:absolute before:inset-0 
+    before:bg-stone-900 dark:before:bg-white
+    before:blur-md before:opacity-60"
+  ></div>
 
-            <span className="text-xl font-bold text-stone-900 dark:text-white">
-              Aura Admin
-            </span>
-          </div>
+  <span className="text-xl font-bold text-stone-900 dark:text-white">
+    Aura Admin
+  </span>
+</div>
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map(item => (
