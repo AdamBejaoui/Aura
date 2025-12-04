@@ -8,7 +8,7 @@ require('dotenv').config();
 connectDB();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -30,8 +30,6 @@ app.get('/api/init-admin', async (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, 'localhost', () => {
+  console.log(`Server running on localhost:${PORT}`);
 });
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
