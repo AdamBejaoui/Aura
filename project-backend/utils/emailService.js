@@ -1,19 +1,51 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Check if email is configured
+const isEmailConfigured = () => {
+    return process.env.EMAIL_HOST && 
+           process.env.EMAIL_PORT && 
+           process.env.EMAIL_USER && 
+           process.env.EMAIL_PASSWORD && 
+           process.env.NOTIFICATION_EMAIL;
+};
+
 // Configure email transporter
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-    }
-});
+let transporter = null;
+
+if (isEmailConfigured()) {
+    const port = parseInt(process.env.EMAIL_PORT, 10);
+    transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: port,
+        secure: port === 465,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
+    
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('❌ Email transporter verification failed:', error.message);
+        } else {
+            console.log('✅ Email service ready');
+        }
+    });
+} else {
+    console.log('⚠️ Email not configured - missing environment variables');
+}
 
 // Send new order notification email
 const sendOrderNotification = async (order, products) => {
+    if (!transporter) {
+        console.log('⚠️ Email not sent - transporter not configured');
+        return false;
+    }
+    
     try {
         // Build product list HTML
         const productListHTML = products.map(p => `
