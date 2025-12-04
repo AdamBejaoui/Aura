@@ -4,3 +4,8 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+VITE_API_BASE = "https://2c064db8-9ac3-4cd0-a259-a4f25399cd7c-00-c2ntnej146ys.riker.replit.dev"

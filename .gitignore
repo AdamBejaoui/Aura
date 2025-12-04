@@ -1,7 +1,30 @@
 # Node.js
 node_modules/
+project-frontend/node_modules/
+project-backend/node_modules/
 *.log
 
 # Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+project-backend/.env
+
 # Vite / build
 dist/
+build/
+project-frontend/dist/
+project-frontend/build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
