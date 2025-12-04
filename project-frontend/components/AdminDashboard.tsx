@@ -71,6 +71,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
   // Filters & Theme
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'>('all');
   const [orderSortMode, setOrderSortMode] = useState<'newest' | 'status'>('newest');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [adminEmail, setAdminEmail] = useState(() => {
     if (typeof window === 'undefined') return 'Admin';
     return window.localStorage?.getItem('adminEmail') || 'Admin';
@@ -739,34 +740,48 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white font-sans transition-colors duration-300 overflow-hidden flex">
-      <aside className="w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col z-20 h-full">
-        <div className="p-6 border-b border-gray-100 dark:border-neutral-800">
-<div className="flex items-center gap-3">
-  <div
-    className="relative w-4 h-4 
-    bg-stone-900 dark:bg-white
-    [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
-    before:content-[''] before:absolute before:inset-0 
-    before:bg-stone-900 dark:before:bg-white
-    before:blur-md before:opacity-60"
-  ></div>
-
-  <span className="text-xl font-bold text-stone-900 dark:text-white">
-    Aura Admin
-  </span>
-</div>
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <aside className={`fixed lg:relative w-72 lg:w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col z-40 h-full transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="relative w-4 h-4 
+              bg-stone-900 dark:bg-white
+              [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]
+              before:content-[''] before:absolute before:inset-0 
+              before:bg-stone-900 dark:before:bg-white
+              before:blur-md before:opacity-60"
+            ></div>
+            <span className="text-xl font-bold text-stone-900 dark:text-white">
+              Aura Admin
+            </span>
+          </div>
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto">
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group text-left ${activeSection === item.id
+              onClick={() => { setActiveSection(item.id as 'dashboard' | 'addProduct' | 'orders'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 sm:px-4 py-3 rounded-xl transition-all duration-200 group text-left ${activeSection === item.id
                 ? 'bg-stone-100 dark:bg-stone-500/10 text-stone-900 dark:text-stone-400'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800'
                 }`}
             >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${activeSection === item.id
+              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${activeSection === item.id
                 ? 'bg-stone-200 dark:bg-stone-500/20'
                 : 'bg-gray-100 dark:bg-neutral-800 group-hover:bg-white dark:group-hover:bg-neutral-700'
                 }`}>
@@ -780,40 +795,46 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 )}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold text-sm">{item.label}</p>
-                <p className="text-xs opacity-70">{item.description}</p>
+                <p className="text-xs opacity-70 truncate">{item.description}</p>
               </div>
               {item.id === 'orders' && pendingOrdersCount > 0 && (
-                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm min-w-[20px] text-center">
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm min-w-[20px] text-center flex-shrink-0">
                   {pendingOrdersCount}
                 </span>
               )}
             </button>
           ))}
         </nav>
-        <div className="p-4 border-t border-gray-100 dark:border-neutral-800">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Welcome back, {adminEmail}
+        <div className="p-3 sm:p-4 border-t border-gray-100 dark:border-neutral-800">
+          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+            Welcome, {adminEmail}
           </p>
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            className="w-full flex items-center gap-3 px-3 sm:px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             <span className="font-medium text-sm">Logout</span>
           </button>
         </div>
       </aside>
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border-b border-gray-200 dark:border-neutral-800 p-6 flex items-center justify-between z-10">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+        <header className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border-b border-gray-200 dark:border-neutral-800 p-4 sm:p-6 flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
               {navItems.find(i => i.id === activeSection)?.label}
             </h1>
-
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
@@ -826,7 +847,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             </button>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-6 relative">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
           <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-30">
             <Plasma
               color={isDark ? '#ffffff' : '#1c1917'}
