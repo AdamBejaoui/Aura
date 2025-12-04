@@ -114,8 +114,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
           return;
         }
         const [productsRes, ordersRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/products', authHeader),
-          axios.get('http://localhost:5000/api/orders', authHeader)
+          axios.get('/api/products', authHeader),
+          axios.get('/api/orders', authHeader)
         ]);
         setProducts(productsRes.data);
         setOrders(ordersRes.data);
@@ -149,7 +149,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
   const getImageUrl = (imagePath: string) => {
     if (!imagePath) return 'https://placehold.co/300x400/f8fafc/94a3b8?text=No+Image';
     if (imagePath.startsWith('http')) return imagePath;
-    return `http://localhost:5000${imagePath}`;
+    return imagePath;
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,12 +193,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
       };
 
       if (isEditing && editingProduct) {
-        const response = await axios.patch(`http://localhost:5000/api/products/${editingProduct._id}`, formData, config);
+        const response = await axios.patch(`/api/products/${editingProduct._id}`, formData, config);
         setProducts(products.map(p => p._id === editingProduct._id ? response.data : p));
         setEditingProduct(null);
         setIsEditing(false);
       } else {
-        const response = await axios.post('http://localhost:5000/api/products', formData, config);
+        const response = await axios.post('/api/products', formData, config);
         setProducts([...products, response.data]);
       }
 
@@ -247,7 +247,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
   const handleDeleteProduct = async (productId: string) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/products/${productId}`, authHeader);
+      await axios.delete(`/api/products/${productId}`, authHeader);
       setProducts(products.filter(p => p._id !== productId));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete product');
@@ -256,7 +256,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const response = await axios.patch(`http://localhost:5000/api/orders/${orderId}/status`, { status }, authHeader);
+      const response = await axios.patch(`/api/orders/${orderId}/status`, { status }, authHeader);
       setOrders(orders.map(order => order._id === orderId ? response.data : order));
     } catch (err: any) {
       setError('Failed to update order status');
@@ -266,7 +266,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
   const handleDeleteOrder = async (orderId: string) => {
     if (!window.confirm('Are you sure you want to delete this order?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/orders/${orderId}`, authHeader);
+      await axios.delete(`/api/orders/${orderId}`, authHeader);
       setOrders(orders.filter(order => order._id !== orderId));
     } catch (err: any) {
       setError('Failed to delete order');

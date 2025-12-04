@@ -66,7 +66,7 @@ const CartCheckout = ({
       }));
 
       // Submit order to backend
-      await axios.post("http://localhost:5000/api/orders", {
+      await axios.post("/api/orders", {
         fullName: fullName.trim(),
         phone: phone.trim(),
         address: address.trim(),
