@@ -90,21 +90,36 @@ export const Plasma = ({
 }) => {
   const containerRef = useRef(null);
   const mousePos = useRef({ x: 0, y: 0 });
+  const [webglSupported, setWebglSupported] = React.useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    const testCanvas = document.createElement('canvas');
+    const testGl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
+    if (!testGl) {
+      setWebglSupported(false);
+      return;
+    }
 
     const useCustomColor = color ? 1.0 : 0.0;
     const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
 
     const directionMultiplier = direction === 'reverse' ? -1.0 : 1.0;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2)
-    });
+    let renderer;
+    try {
+      renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, 2)
+      });
+    } catch (e) {
+      console.warn('WebGL not supported:', e);
+      setWebglSupported(false);
+      return;
+    }
     const gl = renderer.gl;
     const canvas = gl.canvas;
     canvas.style.display = 'block';
@@ -196,6 +211,12 @@ export const Plasma = ({
       }
     };
   }, [color, speed, direction, scale, opacity, mouseInteractive]);
+
+  if (!webglSupported) {
+    return (
+      <div className="w-full h-full overflow-hidden relative bg-gradient-to-br from-purple-900 via-blue-900 to-black" />
+    );
+  }
 
   return <div ref={containerRef} className="w-full h-full overflow-hidden relative" />;
 };
