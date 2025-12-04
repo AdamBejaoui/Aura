@@ -1,5 +1,4 @@
-// src/lib/api.ts
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+const API_BASE = '';
 
 export const api = {
   get: (url: string, token?: string) => 

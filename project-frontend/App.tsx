@@ -10,7 +10,7 @@ import { useCartStore } from "./store/cartStore";
 import AdminLogin from "./components/AdminLogin";
 import AdminDashboard from "./components/AdminDashboard";
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+const API_BASE = '';
 
 export type Product = {
   id: string;
