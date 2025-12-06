@@ -244,19 +244,21 @@ function Store() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap justify-center gap-2 mb-16">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${activeCategory === category
-                ? "text-white bg-stone-900 dark:bg-white dark:text-black shadow-lg shadow-stone-900/25 dark:shadow-white/25"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800"
-                }`}
-            >
-              {category}
-            </button>
-          ))}
+        <div className="relative max-w-full mx-auto mb-16 group">
+          <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:justify-center gap-2 px-4 md:px-0 pb-0 md:pb-0 scrollbar-hide snap-x" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`flex-shrink-0 snap-center px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${activeCategory === category
+                  ? "text-white bg-stone-900 dark:bg-white dark:text-black shadow-lg shadow-stone-900/25 dark:shadow-white/25"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800"
+                  }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Search */}
@@ -279,13 +281,13 @@ function Store() {
             No pieces found. Explore our full collection.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
                 className="group relative bg-white dark:bg-neutral-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-2xl hover:shadow-gray-900/10 dark:hover:shadow-white/5 hover:border-gray-300 dark:hover:border-stone-900 dark:border-white/30 transition-all duration-500 hover:-translate-y-2"
               >
-                <div className="relative aspect-[3/4] overflow-hidden bg-gray-50 dark:bg-neutral-800">
+                <div className="relative aspect-[4/5] overflow-hidden bg-gray-50 dark:bg-neutral-800">
                   <img
                     src={product.images[0]}
                     alt={product.name}
@@ -295,7 +297,7 @@ function Store() {
                       "https://placehold.co/800x1000/f8fafc/94a3b8?text=No+Image")
                     }
                   />
-                  <div className="absolute top-3 left-3">
+                  <div className="absolute top-4 left-4 z-10">
                     <span className="text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-stone-300 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-3 py-1.5 rounded-full">
                       {product.category}
                     </span>
