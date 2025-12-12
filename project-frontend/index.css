@@ -34,3 +34,14 @@ textarea:focus-visible {
     @apply bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden transition-all duration-300 hover:shadow-lg;
   }
 }
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

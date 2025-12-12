@@ -1,6 +1,7 @@
 // backend/routes/products.js
 const express = require('express');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -37,10 +38,142 @@ const upload = multer({
 
 const router = express.Router();
 
-// Get all products (public)
+// --- ADMIN ROUTES ---
+
+// Get all reviews (admin only)
+router.get('/reviews/all', authenticateToken, async (req, res) => {
+  try {
+    // Check for admin role logic can be simpler if middleware attached user correctly
+    // Verify admin role
+    const user = await User.findById(req.user.userId);
+    if (!user || user.role !== 'admin') {
+      // Allow hardcoded admin too
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
+    // Aggregate all reviews across all products
+    const reviews = await Product.aggregate([
+      { $unwind: "$reviews" },
+      {
+        $project: {
+          _id: 0,
+          productId: "$_id",
+          productName: "$name",
+          productImage: { $arrayElemAt: ["$images", 0] },
+          review: "$reviews"
+        }
+      },
+      { $sort: { "review.createdAt": -1 } }
+    ]);
+
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Delete a specific review (admin only)
+router.delete('/:id/reviews/:reviewId', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { id, reviewId } = req.params;
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Filter out the review
+    const initialLength = product.reviews.length;
+    product.reviews = product.reviews.filter(review => review._id.toString() !== reviewId);
+
+    if (product.reviews.length === initialLength) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    product.numReviews = product.reviews.length;
+
+    // Recalculate rating
+    const totalRating = product.reviews.reduce((acc, item) => item.rating + acc, 0);
+    product.rating = product.reviews.length > 0 ? totalRating / product.reviews.length : 0;
+
+    await product.save();
+    res.json({ message: 'Review deleted successfully', product });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+// MIGRATION ENDPOINT: Fix all legacy reviews
+router.get('/migrate-reviews', async (req, res) => {
+  try {
+    const result = await Product.collection.updateMany(
+      {
+        $or: [
+          { reviews: { $exists: false } },
+          { reviews: { $not: { $type: "array" } } }
+        ]
+      },
+      {
+        $set: {
+          reviews: [],
+          numReviews: 0,
+          rating: 0
+        }
+      }
+    );
+    res.json({ message: 'Migration complete', modifiedCount: result.modifiedCount });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all products (public) with filtering and sorting
 router.get('/', async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const { category, minPrice, maxPrice, inStock, sort } = req.query;
+
+    // Build query
+    const query = {};
+
+    if (category && category !== 'All') {
+      query.category = category;
+    }
+
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    if (inStock === 'true') {
+      query.inStock = true;
+    }
+
+    // Build sort options
+    let sortOptions = {};
+    switch (sort) {
+      case 'price_asc':
+        sortOptions = { price: 1 };
+        break;
+      case 'price_desc':
+        sortOptions = { price: -1 };
+        break;
+      case 'rating':
+        sortOptions = { rating: -1 };
+        break;
+      case 'newest':
+      default:
+        sortOptions = { createdAt: -1 };
+    }
+
+    const products = await Product.find(query).sort(sortOptions);
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -192,6 +325,67 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+const mongoose = require('mongoose');
+
+// Add review (public)
+router.post('/:id/reviews', async (req, res) => {
+  try {
+    console.log('📝 Received review for product:', req.params.id);
+    console.log('Review data:', req.body);
+    const { name, rating, comment } = req.body;
+
+    // AUTO-MIGRATION: Fix legacy "reviews: 0" or non-array data
+    // Use raw collection access to bypass Mongoose schema validation which fails on "0"
+    await Product.collection.updateOne(
+      {
+        _id: new mongoose.Types.ObjectId(req.params.id),
+        $or: [
+          { reviews: { $exists: false } },
+          { reviews: { $not: { $type: "array" } } }
+        ]
+      },
+      {
+        $set: {
+          reviews: [],
+          numReviews: 0,
+          rating: 0
+        }
+      }
+    );
+
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      console.log('❌ Product not found');
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Double check if reviews is array (in case it wasn't 0 but still not array)
+    if (!Array.isArray(product.reviews)) {
+      product.reviews = [];
+    }
+
+    const review = {
+      name,
+      rating: Number(rating),
+      comment,
+    };
+
+    product.reviews.push(review);
+    product.numReviews = product.reviews.length;
+
+    // Calculate average rating safely
+    const totalRating = product.reviews.reduce((acc, item) => item.rating + acc, 0);
+    product.rating = product.reviews.length > 0 ? totalRating / product.reviews.length : 0;
+
+    await product.save();
+    res.status(201).json(product);
+  } catch (error) {
+    console.error('Review submission error:', error);
+    res.status(400).json({ message: error.message });
   }
 });
 

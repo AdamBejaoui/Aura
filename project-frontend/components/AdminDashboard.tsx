@@ -1,5 +1,5 @@
-// src/components/AdminDashboard.tsx
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Plasma from "./Plasma";
 import ConfirmationModal from "./ConfirmationModal";
@@ -46,6 +46,7 @@ const categories = [
 ];
 
 const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
+    const navigate = useNavigate();
     // --- State ---
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
@@ -68,12 +69,15 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const [error, setError] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [activeSection, setActiveSection] = useState<'dashboard' | 'addProduct' | 'orders'>('dashboard');
+
+    const [activeSection, setActiveSection] = useState<'dashboard' | 'addProduct' | 'orders' | 'users' | 'reviews'>('dashboard');
+    const [users, setUsers] = useState<any[]>([]);
+    const [reviews, setReviews] = useState<any[]>([]);
 
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
         isOpen: boolean;
-        type: 'deleteProduct' | 'deleteOrder' | 'logout' | null;
+        type: 'deleteProduct' | 'deleteOrder' | 'deleteUser' | 'deleteReview' | 'logout' | null;
         id?: string;
         title: string;
         message: string;
@@ -91,8 +95,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const [orderSortMode, setOrderSortMode] = useState<'newest' | 'status'>('newest');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [adminEmail, setAdminEmail] = useState(() => {
-        if (typeof window === 'undefined') return 'Admin';
-        return window.localStorage?.getItem('adminEmail') || 'Admin';
+        if (typeof window === 'undefined') return 'abejaoui90@gmail.com';
+        return window.localStorage?.getItem('adminEmail') || 'abejaoui90@gmail.com';
     });
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window === 'undefined') return 'light';
@@ -132,13 +136,21 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     return;
                 }
 
-                const [productsRes, ordersRes] = await Promise.all([
-                    axios.get('/api/products', authHeader),
-                    axios.get('/api/orders', authHeader)
-                ]);
+                if (activeSection === 'users') {
+                    const res = await axios.get('/api/auth/users', authHeader);
+                    setUsers(res.data);
+                } else if (activeSection === 'reviews') {
+                    const res = await axios.get('/api/products/reviews/all', authHeader);
+                    setReviews(res.data);
+                } else {
+                    const [productsRes, ordersRes] = await Promise.all([
+                        axios.get('/api/products', authHeader),
+                        axios.get('/api/orders', authHeader)
+                    ]);
+                    setProducts(productsRes.data);
+                    setOrders(ordersRes.data);
+                }
 
-                setProducts(productsRes.data);
-                setOrders(ordersRes.data);
                 setError('');
             } catch (err: any) {
                 if (err?.response?.status === 403 || err?.response?.status === 401) {
@@ -153,7 +165,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         };
 
         fetchData();
-    }, [token]);
+    }, [token, activeSection]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -336,6 +348,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         { id: 'dashboard', label: 'Dashboard', description: 'Overview & Stats' },
         { id: 'addProduct', label: 'Add Product', description: 'Inventory Management' },
         { id: 'orders', label: 'Orders', description: 'Order Processing' },
+        { id: 'users', label: 'Users', description: 'Customer Accounts' },
+        { id: 'reviews', label: 'Reviews', description: 'Product Reviews' },
     ];
 
     const handleLogoutClick = () => {
@@ -353,6 +367,15 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             executeDeleteProduct(confirmation.id);
         } else if (confirmation.type === 'deleteOrder' && confirmation.id) {
             executeDeleteOrder(confirmation.id);
+        } else if (confirmation.type === 'deleteUser' && confirmation.id) {
+            axios.delete(`/api/auth/users/${confirmation.id}`, authHeader)
+                .then(() => setUsers(prev => prev.filter(u => u._id !== confirmation.id)))
+                .catch(err => console.error(err));
+        } else if (confirmation.type === 'deleteReview' && confirmation.id) {
+            const [productId, reviewId] = confirmation.id.split('|');
+            axios.delete(`/api/products/${productId}/reviews/${reviewId}`, authHeader)
+                .then(() => setReviews(prev => prev.filter(r => r.review._id !== reviewId)))
+                .catch(err => console.error(err));
         } else if (confirmation.type === 'logout') {
             onLogout();
         }
@@ -880,10 +903,168 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             );
         }
 
+        if (activeSection === 'users') {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h2>
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage customer accounts</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 dark:bg-neutral-800 border-b border-gray-100 dark:border-neutral-700">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
+                                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
+                                    {users.map(user => (
+                                        <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-xs font-bold">
+                                                        {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
+                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
+                                                    : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                                    }`}>
+                                                    {user.role}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                {new Date(user.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {user.role !== 'admin' && (
+                                                    <button
+                                                        onClick={() => setConfirmation({
+                                                            isOpen: true,
+                                                            type: 'deleteUser',
+                                                            id: user._id,
+                                                            title: 'Delete User',
+                                                            message: `Are you sure you want to delete ${user.name}? This cannot be undone.`,
+                                                            isDestructive: true
+                                                        })}
+                                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                                                        title="Delete User"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {users.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                                No users found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (activeSection === 'reviews') {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Reviews</h2>
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">Moderate product reviews</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 dark:bg-neutral-800 border-b border-gray-100 dark:border-neutral-700">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reviewer</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/3">Comment</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
+                                    {reviews.map((r, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    {r.productImage && (
+                                                        <img src={getImageUrl(r.productImage)} alt={r.productName} className="w-10 h-10 rounded-md object-cover" />
+                                                    )}
+                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{r.productName}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-900 dark:text-white">{r.review.name}</div>
+                                                <div className="flex items-center text-amber-400 mt-1">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <svg key={i} className={`w-3 h-3 ${i < r.review.rating ? "fill-current" : "text-gray-300 dark:text-neutral-700"}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{r.review.comment}</p>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                {new Date(r.review.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => setConfirmation({
+                                                        isOpen: true,
+                                                        type: 'deleteReview',
+                                                        id: `${r.productId}|${r.review._id}`,
+                                                        title: 'Delete Review',
+                                                        message: `Are you sure you want to delete this review from ${r.review.name}?`,
+                                                        isDestructive: true
+                                                    })}
+                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                                                    title="Delete Review"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {reviews.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                                No reviews found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // Dashboard (Overview)
-        const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-        const totalOrders = orders.length;
-        const totalProducts = products.length;
 
         return (
             <section>
@@ -1099,6 +1280,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                 {item.id === 'orders' && (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                                 )}
+                                {item.id === 'users' && (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                )}
+                                {item.id === 'reviews' && (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.784.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                                )}
                             </div>
                             <div className="min-w-0">
                                 <p className="font-semibold text-sm">{item.label}</p>
@@ -1116,6 +1303,13 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                         Welcome, {adminEmail}
                     </p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="w-full flex items-center gap-3 px-3 sm:px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors mb-1"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        <span className="font-medium text-sm">Back to Store</span>
+                    </button>
                     <button
                         onClick={handleLogoutClick}
                         className="w-full flex items-center gap-3 px-3 sm:px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"

@@ -1,5 +1,5 @@
 import React, { FormEvent, useMemo, useState } from "react";
-import { X, ShoppingBag, Phone, MapPin, User, CheckCircle2 } from "lucide-react";
+import { X, ShoppingBag, Phone, MapPin, User, CheckCircle2, CreditCard, Banknote } from "lucide-react";
 import axios from "axios";
 import type { CartItem } from "../store/cartStore";
 
@@ -41,6 +41,7 @@ const CartCheckout = ({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
 
   const orderTotal = useMemo(
     () =>
@@ -72,6 +73,7 @@ const CartCheckout = ({
         address: address.trim(),
         size,
         items: orderItems,
+        paymentMethod,
       });
 
       // Show success state locally first
@@ -301,13 +303,51 @@ const CartCheckout = ({
                           onClick={() => setSize(s)}
                           disabled={submitting}
                           className={`py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${size === s
-                              ? 'bg-stone-900 dark:bg-white text-white dark:text-black shadow-lg shadow-stone-500/30'
-                              : 'bg-gray-50 dark:bg-neutral-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-neutral-700 hover:border-stone-300 dark:hover:border-neutral-500'
+                            ? 'bg-stone-900 dark:bg-white text-white dark:text-black shadow-lg shadow-stone-500/30'
+                            : 'bg-gray-50 dark:bg-neutral-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-neutral-700 hover:border-stone-300 dark:hover:border-neutral-500'
                             }`}
                         >
                           {s}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+
+                  {/* Payment Method */}
+                  <div className="space-y-1.5 md:space-y-2">
+                    <label className="text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('cod')}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${paymentMethod === 'cod'
+                          ? 'bg-stone-50 dark:bg-stone-900/40 border-stone-900 dark:border-white ring-1 ring-stone-900 dark:ring-white'
+                          : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 hover:border-gray-300'
+                          }`}
+                      >
+                        <div className={`p-2 rounded-full ${paymentMethod === 'cod' ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'bg-gray-100 dark:bg-neutral-700 text-gray-500'}`}>
+                          <Banknote className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                          <span className="block text-sm font-medium text-gray-900 dark:text-white">Cash on Delivery</span>
+                          <span className="block text-xs text-gray-500">Pay when you receive</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800/50 opacity-60 cursor-not-allowed"
+                      >
+                        <div className="p-2 rounded-full bg-gray-100 dark:bg-neutral-700 text-gray-400">
+                          <CreditCard className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                          <span className="block text-sm font-medium text-gray-900 dark:text-white">Card Payment</span>
+                          <span className="block text-xs text-gray-500">Coming Soon</span>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
@@ -328,7 +368,7 @@ const CartCheckout = ({
                         Processing...
                       </span>
                     ) : (
-                      "Confirm Request"
+                      paymentMethod === 'cod' ? "Place Order (Pay on Delivery)" : "Confirm Payment"
                     )}
                   </button>
 
@@ -341,7 +381,7 @@ const CartCheckout = ({
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

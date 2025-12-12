@@ -1,6 +1,5 @@
-import React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, Sun, Moon } from "lucide-react";
 import axios from "axios";
 import Plasma from "./components/Plasma";
@@ -10,8 +9,22 @@ import { useCartStore } from "./store/cartStore";
 import AdminLogin from "./components/AdminLogin";
 import AdminDashboard from "./components/AdminDashboard";
 import Footer from "./components/Footer";
+import FilterSidebar from "./components/FilterSidebar";
+import WishlistSidebar from "./components/WishlistSidebar";
+import AuthModal from "./components/AuthModal";
+import { useWishlistStore } from "./store/wishlistStore";
+import { useAuthStore } from "./store/authStore";
+import { Filter as FilterIcon, Heart, User, LogOut, Package } from "lucide-react";
 
 const API_BASE = '';
+
+export type Review = {
+  _id: string;
+  name: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+};
 
 export type Product = {
   id: string;
@@ -20,7 +33,8 @@ export type Product = {
   price: number;
   description: string;
   rating: number;
-  reviews: number;
+  numReviews: number;
+  reviews: Review[];
   images: string[];
   inStock: boolean;
   currency: string;
@@ -43,6 +57,7 @@ const formatCurrency = (value: number, currency: string = 'USD') =>
   }).format(value);
 
 function Store() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,6 +73,33 @@ function Store() {
     return prefersDark ? 'dark' : 'light';
   });
   const isDark = theme === 'dark';
+
+  // Filters State
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+  const [filters, setFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    inStock: false,
+    sort: 'newest'
+  });
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      minPrice: '',
+      maxPrice: '',
+      inStock: false,
+      sort: 'newest'
+    });
+  };
 
   const {
     items,
@@ -79,11 +121,21 @@ function Store() {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
+  const { items: wishlistItemsList, toggleWishlist, toggleItem } = useWishlistStore();
+  const wishlistedIds = wishlistItemsList.map(i => i.id);
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_BASE}/api/products`);
+        const params = new URLSearchParams();
+        if (activeCategory !== 'All') params.append('category', activeCategory);
+        if (filters.minPrice) params.append('minPrice', filters.minPrice);
+        if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+        if (filters.inStock) params.append('inStock', 'true');
+        if (filters.sort) params.append('sort', filters.sort);
+
+        const response = await axios.get(`${API_BASE}/api/products?${params.toString()}`);
         const formattedProducts = response.data.map((product: any) => {
           let images: string[] = [];
           if (Array.isArray(product.images) && product.images.length > 0) {
@@ -102,7 +154,8 @@ function Store() {
             price: product.price,
             description: product.description,
             rating: product.rating || 0,
-            reviews: product.reviews || 0,
+            reviews: Array.isArray(product.reviews) ? product.reviews : [],
+            numReviews: product.numReviews || (Array.isArray(product.reviews) ? product.reviews.length : (typeof product.reviews === 'number' ? product.reviews : 0)),
             images,
             inStock: product.inStock !== undefined ? product.inStock : true,
             currency: product.currency || 'USD',
@@ -118,7 +171,7 @@ function Store() {
       }
     };
     fetchProducts();
-  }, []);
+  }, [activeCategory, filters]);
 
   const filteredProducts = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -131,7 +184,7 @@ function Store() {
         product.description.toLowerCase().includes(query);
       return matchesCategory && matchesQuery;
     });
-  }, [activeCategory, searchTerm, products]);
+  }, [searchTerm, products]);
 
   const handleOpenModal = (product: Product) => {
     setSelectedProduct(product);
@@ -213,10 +266,33 @@ function Store() {
 
           <div className="flex items-center gap-4">
             {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="relative p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+
+            <button
+              onClick={toggleWishlist}
+              className="relative p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+            >
+              <Heart className="h-5 w-5" />
+              {wishlistItemsList.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                  {wishlistItemsList.length}
+                </span>
+              )}
+            </button>
+
+            {/* User Menu */}
+
 
             <button
               onClick={() => toggleCheckout(true)}
-              className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              className="relative p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+              aria-label="Cart"
             >
               <ShoppingCart className="h-6 w-6 text-gray-900 dark:text-white" />
               {cartCount > 0 && (
@@ -225,19 +301,59 @@ function Store() {
                 </span>
               )}
             </button>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-              aria-label="Toggle theme"
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => isAuthenticated ? setShowUserMenu(!showUserMenu) : setIsAuthOpen(true)}
+                className="relative p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                aria-label="User account"
+              >
+                {isAuthenticated ? (
+                  <div className="w-6 h-6 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-xs font-bold">
+                    {user?.name.charAt(0).toUpperCase()}
+                  </div>
+                ) : (
+                  <User className="h-5 w-5" />
+                )}
+              </button>
 
-            {/* Cart Button */}
-
+              {/* User Dropdown */}
+              {showUserMenu && isAuthenticated && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-gray-100 dark:border-neutral-800 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="p-4 border-b border-gray-100 dark:border-neutral-800">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user?.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        navigate('/admin');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 flex items-center gap-2"
+                    >
+                      <Package className="w-4 h-4" />
+                      Dashboard
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate('/'); // Force back to store on logout
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
       </header>
+
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
         {/* Hero */}
@@ -268,9 +384,9 @@ function Store() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="max-w-md mx-auto mb-16">
-          <div className="relative">
+        {/* Filters and Search Layout */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
@@ -280,6 +396,17 @@ function Store() {
               className="w-full pl-10 pr-4 py-3 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full focus:outline-none focus:ring-2 focus:ring-stone-900/20 dark:focus:ring-white/20 focus:border-stone-900 dark:focus:border-white transition-all"
             />
           </div>
+
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-full text-sm font-medium hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors shadow-sm whitespace-nowrap"
+          >
+            <FilterIcon className="w-4 h-4" />
+            Filters & Sort
+            {(filters.minPrice || filters.maxPrice || filters.inStock || filters.sort !== 'newest') && (
+              <span className="ml-1 w-2 h-2 bg-stone-900 dark:bg-white rounded-full"></span>
+            )}
+          </button>
         </div>
 
         {/* Products */}
@@ -310,6 +437,20 @@ function Store() {
                     </span>
                   </div>
 
+                  {/* Wishlist Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleItem(product);
+                    }}
+                    className={`absolute top-4 right-4 z-10 p-2 rounded-full backdrop-blur-md transition-all ${wishlistedIds.includes(product.id)
+                      ? "bg-red-500 text-white"
+                      : "bg-white/90 dark:bg-neutral-900/90 text-gray-900 dark:text-white hover:scale-110"
+                      }`}
+                  >
+                    <Heart className={`w-4 h-4 ${wishlistedIds.includes(product.id) ? "fill-current" : ""}`} />
+                  </button>
+
                   {/* Quick View Button */}
                   <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <button
@@ -323,9 +464,16 @@ function Store() {
                 </div>
 
                 <div className="p-5">
-                  <h3 className="font-semibold text-gray-900 dark:text-white text-lg mb-2 truncate">
-                    {product.name}
-                  </h3>
+                  <div className="flex flex-col gap-1 mb-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-medium text-gray-400">
+                        ({product.numReviews} reviews)
+                      </span>
+                    </div>
+                  </div>
                   <div className="text-xl font-bold text-gray-900 dark:text-white">
                     {formatCurrency(product.price, product.currency)}
                   </div>
@@ -359,6 +507,15 @@ function Store() {
         onUpdateQuantity={updateQuantity}
         onSubmitOrder={() => { }}
       />
+      <FilterSidebar
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onClearFilters={clearFilters}
+      />
+      <WishlistSidebar />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 }

@@ -3,52 +3,52 @@ require('dotenv').config();
 
 // Check if email is configured
 const isEmailConfigured = () => {
-    return process.env.EMAIL_HOST && 
-           process.env.EMAIL_PORT && 
-           process.env.EMAIL_USER && 
-           process.env.EMAIL_PASSWORD && 
-           process.env.NOTIFICATION_EMAIL;
+  return process.env.EMAIL_HOST &&
+    process.env.EMAIL_PORT &&
+    process.env.EMAIL_USER &&
+    process.env.EMAIL_PASSWORD &&
+    process.env.NOTIFICATION_EMAIL;
 };
 
 // Configure email transporter
 let transporter = null;
 
 if (isEmailConfigured()) {
-    const port = parseInt(process.env.EMAIL_PORT, 10);
-    transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: port,
-        secure: port === 465,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD
-        },
-        tls: {
-            rejectUnauthorized: false
-        }
-    });
-    
-    transporter.verify((error, success) => {
-        if (error) {
-            console.error('❌ Email transporter verification failed:', error.message);
-        } else {
-            console.log('✅ Email service ready');
-        }
-    });
+  const port = parseInt(process.env.EMAIL_PORT, 10);
+  transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: port,
+    secure: port === 465,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Email transporter verification failed:', error.message);
+    } else {
+      console.log('✅ Email service ready');
+    }
+  });
 } else {
-    console.log('⚠️ Email not configured - missing environment variables');
+  console.log('⚠️ Email not configured - missing environment variables');
 }
 
 // Send new order notification email
 const sendOrderNotification = async (order, products) => {
-    if (!transporter) {
-        console.log('⚠️ Email not sent - transporter not configured');
-        return false;
-    }
-    
-    try {
-        // Build product list HTML
-        const productListHTML = products.map(p => `
+  if (!transporter) {
+    console.log('⚠️ Email not sent - transporter not configured');
+    return false;
+  }
+
+  try {
+    // Build product list HTML
+    const productListHTML = products.map(p => `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${p.name}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${p.quantity}</td>
@@ -56,11 +56,11 @@ const sendOrderNotification = async (order, products) => {
       </tr>
     `).join('');
 
-        const mailOptions = {
-            from: `"Aura Store" <${process.env.EMAIL_USER}>`,
-            to: process.env.NOTIFICATION_EMAIL,
-            subject: `🛍️ New Order #${order._id.toString().slice(-6)} - $${order.total.toFixed(2)}`,
-            html: `
+    const mailOptions = {
+      from: `"Aura Store" <${process.env.EMAIL_USER}>`,
+      to: process.env.NOTIFICATION_EMAIL,
+      subject: `🛍️ New Order #${order._id.toString().slice(-6)} - $${order.total.toFixed(2)}`,
+      html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -88,6 +88,7 @@ const sendOrderNotification = async (order, products) => {
                 <p><strong>Phone:</strong> ${order.phone}</p>
                 <p><strong>Address:</strong> ${order.address}</p>
                 <p><strong>Size:</strong> ${order.size}</p>
+                <p><strong>Payment Method:</strong> ${order.paymentMethod === 'cod' ? 'Cash on Delivery 💵' : 'Card Payment 💳'}</p>
               </div>
 
               <div class="order-details">
@@ -117,16 +118,16 @@ const sendOrderNotification = async (order, products) => {
         </body>
         </html>
       `
-        };
+    };
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log('✅ Order notification email sent:', info.messageId);
-        return true;
-    } catch (error) {
-        console.error('❌ Failed to send order notification email:', error);
-        // Don't throw error - we don't want to fail the order if email fails
-        return false;
-    }
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Order notification email sent:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send order notification email:', error);
+    // Don't throw error - we don't want to fail the order if email fails
+    return false;
+  }
 };
 
 module.exports = { sendOrderNotification };

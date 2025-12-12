@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { X, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import type { Product } from "../App";
+import ReviewSection from "./ReviewSection";
+import { useWishlistStore } from "../store/wishlistStore";
+import { Heart } from "lucide-react";
 
 type ProductDetailModalProps = {
   product: Product | null;
@@ -19,7 +22,16 @@ const ProductDetailModal = ({
 }: ProductDetailModalProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAutoplaying, setIsAutoplaying] = useState(true);
-  const images = product?.images || [];
+  const [localProduct, setLocalProduct] = useState<Product | null>(product);
+
+  const { items, toggleItem } = useWishlistStore();
+  const isWishlisted = items.some(i => i.id === localProduct?.id);
+
+  useEffect(() => {
+    setLocalProduct(product);
+  }, [product]);
+
+  const images = localProduct?.images || [];
 
   useEffect(() => {
     if (isOpen) {
@@ -45,7 +57,7 @@ const ProductDetailModal = ({
     setIsAutoplaying(false);
   };
 
-  if (!isOpen || !product) return null;
+  if (!isOpen || !localProduct) return null;
 
   return (
     <div
@@ -74,7 +86,7 @@ const ProductDetailModal = ({
               >
                 <img
                   src={img}
-                  alt={`${product.name} ${idx + 1}`}
+                  alt={`${localProduct.name} ${idx + 1}`}
                   className="h-full w-full object-cover"
                 />
                 {/* Gradient Overlay for text visibility on mobile */}
@@ -116,25 +128,25 @@ const ProductDetailModal = ({
 
           {/* Details Section - Scrollable Area */}
           <div className="flex flex-col flex-1 min-h-0 bg-white dark:bg-neutral-900">
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 md:p-10">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 md:p-10 no-scrollbar">
               <div className="space-y-4 sm:space-y-6">
                 <div>
                   <span className="inline-block rounded-full bg-gray-100 dark:bg-stone-900/20 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-stone-300 mb-2">
-                    {product.category}
+                    {localProduct.category}
                   </span>
                   <h2 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
-                    {product.name}
+                    {localProduct.name}
                   </h2>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {product.price.toLocaleString("en-US", {
+                    {localProduct.price.toLocaleString("en-US", {
                       style: "currency",
-                      currency: product.currency || "USD",
+                      currency: localProduct.currency || "USD",
                     })}
                   </span>
-                  {product.inStock ? (
+                  {localProduct.inStock ? (
                     <span className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium px-2 py-0.5 bg-green-50 dark:bg-green-900/20 rounded">
                       In Stock
                     </span>
@@ -148,7 +160,7 @@ const ProductDetailModal = ({
 
               <div className="prose prose-sm dark:prose-invert">
                 <p className="text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-300 line-clamp-3 md:line-clamp-none">
-                  {product.description}
+                  {localProduct.description}
                 </p>
               </div>
 
@@ -163,34 +175,50 @@ const ProductDetailModal = ({
                   <span className="text-sm font-medium text-gray-900 dark:text-white">Regular Fit</span>
                 </div>
               </div>
+
+              {/* Reviews Section */}
+              <ReviewSection
+                productId={localProduct.id}
+                reviews={localProduct.reviews || []}
+                onReviewAdded={(updated) => setLocalProduct({ ...localProduct, ...updated })}
+              />
             </div>
 
 
             {/* Pinned Action Button */}
-            <div className="p-4 sm:p-8 sm:pt-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 z-10">
+            <div className="p-4 sm:p-8 sm:pt-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 z-10 flex gap-3">
               <button
                 onClick={() => {
-                  if (product.inStock) {
-                    onAddToCart?.(product);
+                  if (localProduct.inStock) {
+                    onAddToCart?.(localProduct);
                     onClose();
                   }
                 }}
-                disabled={!product.inStock}
-                className={`group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 sm:py-4 transition-all ${product.inStock
+                disabled={!localProduct.inStock}
+                className={`group relative flex flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 sm:py-4 transition-all ${localProduct.inStock
                   ? "bg-stone-900 dark:bg-white text-white dark:text-black hover:bg-black dark:hover:bg-gray-200 hover:shadow-lg hover:shadow-stone-900/25 dark:hover:shadow-white/10 active:scale-[0.98]"
                   : "bg-gray-200 dark:bg-neutral-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
                   }`}
               >
                 <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:-translate-y-1 group-hover:rotate-12" />
                 <span className="font-bold text-sm sm:text-lg">
-                  {product.inStock ? "Add to Cart" : "Out of Stock"}
+                  {localProduct.inStock ? "Add to Cart" : "Out of Stock"}
                 </span>
+              </button>
+
+              <button
+                onClick={() => localProduct && toggleItem(localProduct)}
+                className={`p-3 rounded-xl border-2 transition-all ${isWishlisted
+                  ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-500"
+                  : "border-gray-200 dark:border-neutral-700 hover:border-gray-900 dark:hover:border-white text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+              >
+                <Heart className={`w-6 h-6 ${isWishlisted ? "fill-current" : ""}`} />
               </button>
             </div>
           </div>
         </div>
       </div>
-
     </div>
   );
 };
