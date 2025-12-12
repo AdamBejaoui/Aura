@@ -920,6 +920,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Verified</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
                                         <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                                     </tr>
@@ -944,6 +945,14 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                     : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
                                                     }`}>
                                                     {user.role}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isVerified
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
+                                                    }`}>
+                                                    {user.isVerified ? '✓ Verified' : '⏳ Pending'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
@@ -971,7 +980,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                     ))}
                                     {users.length === 0 && (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                                 No users found
                                             </td>
                                         </tr>

@@ -13,9 +13,11 @@ import Footer from "./components/Footer";
 import FilterSidebar from "./components/FilterSidebar";
 import WishlistSidebar from "./components/WishlistSidebar";
 import AuthModal from "./components/AuthModal";
+import ConfirmationModal from "./components/ConfirmationModal";
 import { useWishlistStore } from "./store/wishlistStore";
 import { useAuthStore } from "./store/authStore";
 import OrderHistory from "./components/OrderHistory";
+import OrderHistorySidebar from "./components/OrderHistorySidebar";
 import { Filter as FilterIcon, Heart, User, LogOut, Package } from "lucide-react";
 
 const API_BASE = '';
@@ -80,6 +82,8 @@ function Store() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showOrderHistory, setShowOrderHistory] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const isAdmin = user?.role === 'admin';
@@ -327,7 +331,7 @@ function Store() {
                   </div>
                   <button
                     onClick={() => {
-                      navigate('/my-orders');
+                      setShowOrderHistory(true);
                       setShowUserMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 flex items-center gap-2"
@@ -349,8 +353,7 @@ function Store() {
                   )}
                   <button
                     onClick={() => {
-                      logout();
-                      navigate('/'); // Force back to store on logout
+                      setShowLogoutConfirm(true);
                       setShowUserMenu(false);
                     }}
                     className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2"
@@ -527,7 +530,20 @@ function Store() {
         onClearFilters={clearFilters}
       />
       <WishlistSidebar />
+      <OrderHistorySidebar isOpen={showOrderHistory} onClose={() => setShowOrderHistory(false)} />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <ConfirmationModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={() => {
+          logout();
+          navigate('/');
+          setShowLogoutConfirm(false);
+        }}
+        title="Confirm Logout"
+        message="Are you sure you want to sign out?"
+        isDestructive={true}
+      />
     </div>
   );
 }
