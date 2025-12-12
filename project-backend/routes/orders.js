@@ -51,6 +51,18 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Get user's orders
+router.get('/my-orders', authenticateToken, async (req, res) => {
+  try {
+    // Find orders by userId (if registered) or match email if we want to be fancy later
+    // Currently relying on userId being saved with order
+    const orders = await Order.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get all orders (admin only)
 router.get('/', authenticateToken, async (req, res) => {
   try {

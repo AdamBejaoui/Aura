@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Check, AlertCircle } from 'lucide-react';
+import { X, Mail, Lock, User, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
@@ -18,6 +18,8 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         password: '',
     });
 
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
     const { login } = useAuthStore();
 
     if (!isOpen) return null;
@@ -34,12 +36,16 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                 : formData;
 
             const response = await axios.post(endpoint, payload);
-            const { user, token } = response.data;
 
-            login(user, token);
-            onClose();
-            // Reset form
-            setFormData({ name: '', email: '', password: '' });
+            if (isLogin) {
+                const { user, token } = response.data;
+                login(user, token);
+                onClose();
+                setFormData({ name: '', email: '', password: '' });
+            } else {
+                setSuccessMessage(response.data.message);
+                setFormData({ name: '', email: '', password: '' });
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || 'Authentication failed');
         } finally {
@@ -58,86 +64,104 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             {/* Modal */}
             <div className="relative w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in scale-95 duration-200">
 
-                {/* Header */}
-                <div className="p-8 pb-0 text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                        {isLogin ? 'Welcome Back' : 'Join Aura'}
-                    </h2>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        {isLogin
-                            ? 'Enter your details to access your account'
-                            : 'Create an account to unlock exclusive features'}
-                    </p>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-8 space-y-4">
-                    {error && (
-                        <div className="bg-red-50 dark:bg-red-900/20 text-red-500 p-3 rounded-lg text-sm flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4" />
-                            {error}
+                {successMessage ? (
+                    <div className="p-8 text-center space-y-4">
+                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Mail className="w-8 h-8" />
                         </div>
-                    )}
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Check Your Email</h2>
+                        <p className="text-gray-500 dark:text-gray-400">{successMessage}</p>
+                        <button
+                            onClick={onClose}
+                            className="w-full bg-stone-900 dark:bg-white text-white dark:text-black font-bold rounded-xl py-3 mt-4 hover:shadow-lg transition-all"
+                        >
+                            Got it
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        {/* Header */}
+                        <div className="p-8 pb-0 text-center">
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                {isLogin ? 'Welcome Back' : 'Join Aura'}
+                            </h2>
+                            <p className="text-gray-500 dark:text-gray-400">
+                                {isLogin
+                                    ? 'Enter your details to access your account'
+                                    : 'Create an account to unlock exclusive features'}
+                            </p>
+                        </div>
 
-                    {!isLogin && (
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">Name</label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="John Doe"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-900 dark:focus:ring-white outline-none transition-all"
-                                />
+                        {/* Form */}
+                        <form onSubmit={handleSubmit} className="p-8 space-y-4">
+                            {error && (
+                                <div className="bg-red-50 dark:bg-red-900/20 text-red-500 p-3 rounded-lg text-sm flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" />
+                                    {error}
+                                </div>
+                            )}
+
+                            {!isLogin && (
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="John Doe"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            className="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-900 dark:focus:ring-white outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">Email</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <input
+                                        type="email"
+                                        required
+                                        placeholder="hello@example.com"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        className="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-900 dark:focus:ring-white outline-none transition-all"
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    )}
 
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">Email</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input
-                                type="email"
-                                required
-                                placeholder="hello@example.com"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-900 dark:focus:ring-white outline-none transition-all"
-                            />
-                        </div>
-                    </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        className="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-900 dark:focus:ring-white outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1">Password</label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <input
-                                type="password"
-                                required
-                                placeholder="••••••••"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="w-full bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-900 dark:focus:ring-white outline-none transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-stone-900 dark:bg-white text-white dark:text-black font-bold rounded-xl py-3.5 mt-4 hover:shadow-lg hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            isLogin ? 'Sign In' : 'Create Account'
-                        )}
-                    </button>
-                </form>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-stone-900 dark:bg-white text-white dark:text-black font-bold rounded-xl py-3.5 mt-4 hover:shadow-lg hover:shadow-stone-900/20 dark:hover:shadow-white/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {loading ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    isLogin ? 'Sign In' : 'Create Account'
+                                )}
+                            </button>
+                        </form>
+                    </>
+                )}
 
                 {/* Footer */}
                 <div className="p-6 pt-0 text-center">
@@ -147,6 +171,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                             onClick={() => {
                                 setIsLogin(!isLogin);
                                 setError(null);
+                                setSuccessMessage(null);
                             }}
                             className="font-bold text-stone-900 dark:text-white hover:underline"
                         >

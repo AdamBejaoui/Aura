@@ -1,8 +1,10 @@
 // routes/auth.js
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
+const { sendVerificationEmail } = require('../utils/emailService');
 require('dotenv').config();
 
 const router = express.Router();
@@ -17,21 +19,57 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
     user = new User({
       name,
       email,
       password,
+      isVerified: false,
+      verificationToken
     });
 
     await user.save();
 
-    const token = jwt.sign(
+    const emailSent = await sendVerificationEmail(email, verificationToken);
+
+    if (!emailSent) {
+      // Optionally handle email failure (e.g. delete user or warn)
+      console.error("Failed to send verification email");
+    }
+
+    res.status(201).json({
+      message: 'Registration successful! Please check your email to verify your account.',
+      requiresVerification: true
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Verify Email
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+    const user = await User.findOne({ verificationToken: token });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired verification token' });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    const jwtToken = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token: jwtToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -61,6 +99,10 @@ router.post('/login', async (req, res) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: 'Please verify your email address before logging in.' });
     }
 
     const token = jwt.sign(

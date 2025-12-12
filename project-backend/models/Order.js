@@ -16,6 +16,14 @@ const orderSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  email: {
+    type: String,
+    trim: true
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   size: {
     type: String,
     required: true,

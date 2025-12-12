@@ -2,6 +2,7 @@ import React, { FormEvent, useMemo, useState } from "react";
 import { X, ShoppingBag, Phone, MapPin, User, CheckCircle2, CreditCard, Banknote } from "lucide-react";
 import axios from "axios";
 import type { CartItem } from "../store/cartStore";
+import { useAuthStore } from "../store/authStore";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -43,6 +44,15 @@ const CartCheckout = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
 
+  const { user } = useAuthStore();
+
+  // Pre-fill fields if user is logged in
+  React.useEffect(() => {
+    if (user) {
+      setFullName(user.name || "");
+    }
+  }, [user]);
+
   const orderTotal = useMemo(
     () =>
       items.reduce((total, item) => total + item.product.price * item.quantity, 0),
@@ -74,6 +84,9 @@ const CartCheckout = ({
         size,
         items: orderItems,
         paymentMethod,
+        // Attach user info if logged in
+        userId: user ? user.id : undefined,
+        email: user ? user.email : undefined,
       });
 
       // Show success state locally first

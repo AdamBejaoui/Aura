@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Sun, Moon } from "lucide-react";
+import { Search, ShoppingCart, Sun, Moon, ShoppingBag } from "lucide-react";
 import axios from "axios";
 import Plasma from "./components/Plasma";
 import ProductDetailModal from "./components/ProductDetailModal";
@@ -8,12 +8,14 @@ import CartCheckout from "./components/CartCheckout";
 import { useCartStore } from "./store/cartStore";
 import AdminLogin from "./components/AdminLogin";
 import AdminDashboard from "./components/AdminDashboard";
+import VerifyEmail from "./components/VerifyEmail";
 import Footer from "./components/Footer";
 import FilterSidebar from "./components/FilterSidebar";
 import WishlistSidebar from "./components/WishlistSidebar";
 import AuthModal from "./components/AuthModal";
 import { useWishlistStore } from "./store/wishlistStore";
 import { useAuthStore } from "./store/authStore";
+import OrderHistory from "./components/OrderHistory";
 import { Filter as FilterIcon, Heart, User, LogOut, Package } from "lucide-react";
 
 const API_BASE = '';
@@ -323,6 +325,16 @@ function Store() {
                     <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user?.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      navigate('/my-orders');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 flex items-center gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    My Orders
+                  </button>
                   {isAdmin && (
                     <button
                       onClick={() => {
@@ -545,6 +557,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Store />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/my-orders" element={<OrderHistory />} />
         <Route path="/login" element={<Navigate to="/admin/login" replace />} />
         <Route
           path="/admin/login"
