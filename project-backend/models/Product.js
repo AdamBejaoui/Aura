@@ -12,6 +12,12 @@ const productSchema = new mongoose.Schema({
   description: { type: String, required: true, trim: true },
   rating: { type: Number, default: 0, min: 0, max: 5 },
   reviews: { type: Number, default: 0 },
+  inStock: { type: Boolean, default: true },
+  currency: {
+    type: String,
+    enum: ['USD', 'EUR', 'GBP', 'JPY', 'TND'],
+    default: 'TND'
+  },
   // ✅ Allow multiple images
   images: [{ type: String, required: true }]
 }, { timestamps: true });

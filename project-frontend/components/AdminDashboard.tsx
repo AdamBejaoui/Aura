@@ -12,6 +12,8 @@ interface Product {
     price: number;
     description: string;
     images: string[];
+    inStock: boolean;
+    currency: string;
 }
 interface OrderItem {
     productId: string;
@@ -47,7 +49,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     // --- State ---
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
-    
+
     // Form State
     const [newProduct, setNewProduct] = useState({
         name: '',
@@ -55,17 +57,19 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         price: 0,
         description: '',
         images: [] as string[],
+        inStock: true,
+        currency: 'TND',
     });
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    
+
     // UI State
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [activeSection, setActiveSection] = useState<'dashboard' | 'addProduct' | 'orders'>('dashboard');
-    
+
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
         isOpen: boolean;
@@ -81,7 +85,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         message: '',
         isDestructive: false
     });
-    
+
     // Filters & Theme
     const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'>('all');
     const [orderSortMode, setOrderSortMode] = useState<'newest' | 'status'>('newest');
@@ -99,23 +103,23 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     });
     const isDark = theme === 'dark';
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
+
     // Derived State (For Notification Badge)
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
-    
+
     // --- API Headers ---
     const authHeader = {
         headers: {
             Authorization: token ? `Bearer ${token}` : ''
         }
     };
-    
+
     // --- Effects ---
     useEffect(() => {
         if (typeof window === 'undefined') return;
         setAdminEmail(window.localStorage?.getItem('adminEmail') || 'Admin');
     }, [token]);
-    
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -127,12 +131,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     setLoading(false);
                     return;
                 }
-                
+
                 const [productsRes, ordersRes] = await Promise.all([
                     axios.get('/api/products', authHeader),
                     axios.get('/api/orders', authHeader)
                 ]);
-                
+
                 setProducts(productsRes.data);
                 setOrders(ordersRes.data);
                 setError('');
@@ -147,27 +151,27 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 setLoading(false);
             }
         };
-        
+
         fetchData();
     }, [token]);
-    
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
         document.documentElement.classList.toggle('dark', isDark);
         window.localStorage?.setItem('auraTheme', theme);
     }, [theme, isDark]);
-    
+
     // --- Handlers ---
     const toggleTheme = () => {
         setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
     };
-    
+
     const getImageUrl = (imagePath: string) => {
         if (!imagePath) return 'https://placehold.co/300x400/f8fafc/94a3b8?text=No+Image';
         if (imagePath.startsWith('http')) return imagePath;
         return imagePath;
     };
-    
+
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length > 0) {
@@ -177,19 +181,21 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             setImagePreviews([]);
         }
     };
-    
+
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsAdding(true);
-        
+
         try {
             const formData = new FormData();
             formData.append('name', newProduct.name);
             formData.append('category', newProduct.category);
             formData.append('price', String(newProduct.price));
             formData.append('description', newProduct.description);
-            
+            formData.append('inStock', String(newProduct.inStock));
+            formData.append('currency', newProduct.currency);
+
             const fileInput = fileInputRef.current;
             if (fileInput && fileInput.files && fileInput.files.length > 0) {
                 Array.from(fileInput.files).forEach(file => {
@@ -200,13 +206,13 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 setIsAdding(false);
                 return;
             }
-            
+
             const config = {
                 headers: {
                     ...authHeader.headers,
                 },
             };
-            
+
             if (isEditing && editingProduct) {
                 const response = await axios.patch(`/api/products/${editingProduct._id}`, formData, config);
                 setProducts(products.map(p => p._id === editingProduct._id ? response.data : p));
@@ -216,8 +222,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 const response = await axios.post('/api/products', formData, config);
                 setProducts([...products, response.data]);
             }
-            
-            setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [] });
+
+            setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [], inStock: true, currency: 'TND' });
             setImagePreviews([]);
             if (fileInput) fileInput.value = '';
             setIsAdding(false);
@@ -232,7 +238,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             setIsAdding(false);
         }
     };
-    
+
     const startEditing = (product: Product) => {
         setEditingProduct(product);
         setNewProduct({
@@ -241,23 +247,25 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             price: product.price,
             description: product.description,
             images: product.images,
+            inStock: product.inStock,
+            currency: product.currency,
         });
         setImagePreviews(product.images.map(img => getImageUrl(img)));
         setIsEditing(true);
         setActiveSection('addProduct');
         setError('');
     };
-    
+
     const cancelEditing = () => {
         setEditingProduct(null);
-        setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [] });
+        setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [], inStock: true, currency: 'TND' });
         setImagePreviews([]);
         setIsEditing(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         setError('');
         setActiveSection('dashboard');
     };
-    
+
     const handleDeleteProduct = (productId: string) => {
         setConfirmation({
             isOpen: true,
@@ -268,7 +276,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             isDestructive: true
         });
     };
-    
+
     const executeDeleteProduct = async (productId: string) => {
         try {
             await axios.delete(`/api/products/${productId}`, authHeader);
@@ -277,7 +285,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             setError(err.response?.data?.message || 'Failed to delete product');
         }
     };
-    
+
     const updateOrderStatus = async (orderId: string, status: string) => {
         try {
             const response = await axios.patch(`/api/orders/${orderId}/status`, { status }, authHeader);
@@ -286,7 +294,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             setError('Failed to update order status');
         }
     };
-    
+
     const handleDeleteOrder = (orderId: string) => {
         setConfirmation({
             isOpen: true,
@@ -297,7 +305,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             isDestructive: true
         });
     };
-    
+
     const executeDeleteOrder = async (orderId: string) => {
         try {
             await axios.delete(`/api/orders/${orderId}`, authHeader);
@@ -306,7 +314,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             setError('Failed to delete order');
         }
     };
-    
+
     const getStatusConfig = (status: string) => {
         switch (status) {
             case 'pending':
@@ -323,13 +331,13 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 return { bg: 'bg-gray-100 dark:bg-neutral-900/20', text: 'text-gray-700 dark:text-gray-400', icon: '❓' };
         }
     };
-    
+
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', description: 'Overview & Stats' },
         { id: 'addProduct', label: 'Add Product', description: 'Inventory Management' },
         { id: 'orders', label: 'Orders', description: 'Order Processing' },
     ];
-    
+
     const handleLogoutClick = () => {
         setConfirmation({
             isOpen: true,
@@ -339,7 +347,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             isDestructive: true
         });
     };
-    
+
     const handleConfirmAction = () => {
         if (confirmation.type === 'deleteProduct' && confirmation.id) {
             executeDeleteProduct(confirmation.id);
@@ -357,11 +365,11 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         const totalOrders = orders.length;
         const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
         const deliveredOrdersCount = orders.filter(o => o.status === 'delivered').length;
-        
+
         // Calculate percentages for comparison
         const totalOrderPercentage = totalOrders > 0 ? ((pendingOrdersCount / totalOrders) * 100).toFixed(1) : "0";
         const deliveredPercentage = totalOrders > 0 ? ((deliveredOrdersCount / totalOrders) * 100).toFixed(1) : "0";
-        
+
         // Calculate month-over-month change (simplified - you might want to implement actual month comparison)
         const lastMonthRevenue = totalRevenue * 0.88; // Example: assuming 12% growth from last month
         const monthOverMonthChange = ((totalRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1);
@@ -374,9 +382,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Sales Overview</h3>
                         <span className="text-green-600 dark:text-green-400 font-medium">+18.2%</span>
                     </div>
-                    
+
                     <div className="text-3xl font-bold text-gray-900 dark:text-white mb-6">${(totalRevenue / 1000).toFixed(1)}k</div>
-                    
+
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gray-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center">
@@ -387,13 +395,13 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{pendingOrdersCount}</p>
                             </div>
                         </div>
-                        
+
                         <div className="text-center">
                             <div className="w-10 h-10 bg-gray-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-2">
                                 <span className="text-gray-600 dark:text-gray-400 text-xs">VS</span>
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gray-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center">
                                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v8l-8 4m0-8v8l8 4m0 0v8l8-4M0 11v8l8-4"></path></svg>
@@ -404,7 +412,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="mt-6 flex items-center justify-between">
                         <div>
                             <p className="text-xl font-bold text-gray-900 dark:text-white">{totalOrderPercentage}%</p>
@@ -412,8 +420,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </div>
                         <div className="flex-1 mx-4">
                             <div className="h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-stone-900 dark:bg-stone-400" 
+                                <div
+                                    className="h-full bg-stone-900 dark:bg-stone-400"
                                     style={{ width: `${totalOrderPercentage}%` }}
                                 ></div>
                             </div>
@@ -424,7 +432,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </div>
                     </div>
                 </div>
-                
+
                 {/* Statistics Card */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -433,7 +441,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 1112 0m-6-8a2 2 0 100 4m0-4a2 2 0 110 4m0 8a2 2 0 110-4m0 4a2 2 0 100-4m-2-8h.02M12 16h.02"></path></svg>
                         </button>
                     </div>
-                    
+
                     <div className="space-y-6">
                         <div>
                             <div className="flex items-center justify-between mb-2">
@@ -448,7 +456,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                 <div className="h-full bg-stone-900 dark:bg-stone-400" style={{ width: '85%' }}></div>
                             </div>
                         </div>
-                        
+
                         <div>
                             <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-medium text-gray-900 dark:text-white">Order Delivered</h4>
@@ -464,13 +472,13 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </div>
                     </div>
                 </div>
-                
+
                 {/* Income This Month Card */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Income this month</h3>
                     </div>
-                    
+
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">${(totalRevenue / 6).toFixed(0)}</p>
@@ -490,10 +498,10 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                         <stop offset="100%" stopColor="#F3F4F6" />
                                     </linearGradient>
                                 </defs>
-                                <path 
-                                    d="M0,30 C20,10 40,40 60,20 C80,0 100,30 100,30 L100,50 L0,50 Z" 
-                                    fill="url(#grad1)" 
-                                    stroke="#6B7280" 
+                                <path
+                                    d="M0,30 C20,10 40,40 60,20 C80,0 100,30 100,30 L100,50 L0,50 Z"
+                                    fill="url(#grad1)"
+                                    stroke="#6B7280"
                                     strokeWidth="2"
                                 />
                             </svg>
@@ -576,6 +584,44 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                 step="0.01"
                                                 required
                                             />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={newProduct.currency}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, currency: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none appearance-none transition-all"
+                                                >
+                                                    <option value="USD">USD ($)</option>
+                                                    <option value="EUR">EUR (€)</option>
+                                                    <option value="GBP">GBP (£)</option>
+                                                    <option value="JPY">JPY (¥)</option>
+                                                    <option value="TND">TND (DT)</option>
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Status</label>
+                                            <div className="flex items-center gap-4 h-[50px]">
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={newProduct.inStock}
+                                                        onChange={(e) => setNewProduct({ ...newProduct, inStock: e.target.checked })}
+                                                        className="sr-only peer"
+                                                    />
+                                                    <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                                                    <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                                                        {newProduct.inStock ? 'In Stock' : 'Out of Stock'}
+                                                    </span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                     <div>
@@ -664,7 +710,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                 <p className="text-xs font-semibold text-stone-500 mb-1 tracking-wide uppercase">{newProduct.category || 'Category'}</p>
                                                 <h4 className="font-bold text-gray-900 dark:text-white text-base mb-2 truncate leading-tight">{newProduct.name || 'Product Name'}</h4>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-lg font-bold text-gray-900 dark:text-white">${Number(newProduct.price).toFixed(2)}</span>
+                                                    <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                                        {newProduct.currency} {Number(newProduct.price).toFixed(2)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -676,7 +724,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 </section>
             );
         }
-        
+
         if (activeSection === 'orders') {
             const filteredOrders = orderStatusFilter === 'all'
                 ? orders
@@ -688,7 +736,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 return a.status.localeCompare(b.status);
             });
             const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-            
+
             return (
                 <section>
                     <div className="flex items-center justify-between mb-6">
@@ -831,59 +879,59 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 </section>
             );
         }
-        
+
         // Dashboard (Overview)
         const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
         const totalOrders = orders.length;
         const totalProducts = products.length;
-        
+
         return (
             <section>
                 {/* New Dashboard Stats */}
                 <DashboardStats />
-                
+
                 {/* 5-Card Metrics Section - Updated to match your design */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                     {[
-                        { 
-                            label: 'Total Sales', 
-                            value: '$13.4k', 
-                            icon: '💰', 
-                            change: '+38%', 
+                        {
+                            label: 'Total Sales',
+                            value: '$13.4k',
+                            icon: '💰',
+                            change: '+38%',
                             period: 'Last 6 months',
-                            isPositive: true 
+                            isPositive: true
                         },
-                        { 
-                            label: 'Total Orders', 
-                            value: '155K', 
-                            icon: '🛍️', 
-                            change: '+22%', 
+                        {
+                            label: 'Total Orders',
+                            value: '155K',
+                            icon: '🛍️',
+                            change: '+22%',
                             period: 'Last 4 months',
-                            isPositive: true 
+                            isPositive: true
                         },
-                        { 
-                            label: 'Total Profit', 
-                            value: '$89.34k', 
-                            icon: '$', 
-                            change: '-16%', 
+                        {
+                            label: 'Total Profit',
+                            value: '$89.34k',
+                            icon: '$',
+                            change: '-16%',
                             period: 'Last One year',
-                            isPositive: false 
+                            isPositive: false
                         },
-                        { 
-                            label: 'Bookmarks', 
-                            value: '$1,200', 
-                            icon: '🔖', 
-                            change: '+38%', 
+                        {
+                            label: 'Bookmarks',
+                            value: '$1,200',
+                            icon: '🔖',
+                            change: '+38%',
                             period: 'Last 6 months',
-                            isPositive: true 
+                            isPositive: true
                         },
-                        { 
-                            label: 'Total Impressions', 
-                            value: '142.8k', 
-                            icon: '🌐', 
-                            change: '-20%', 
+                        {
+                            label: 'Total Impressions',
+                            value: '142.8k',
+                            icon: '🌐',
+                            change: '-20%',
                             period: 'Last 6 months',
-                            isPositive: false 
+                            isPositive: false
                         },
                     ].map((stat, idx) => (
                         <div key={idx} className="bg-white dark:bg-neutral-900 p-6 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm">
@@ -910,7 +958,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </div>
                     ))}
                 </div>
-                
+
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Products</h2>
                     <button
@@ -920,7 +968,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         + Add Product
                     </button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {products.map(product => (
                         <div key={product._id} className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition-all group">
@@ -957,7 +1005,14 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                 <p className="text-xs font-medium text-stone-500 mb-1">{product.category}</p>
                                 <h4 className="font-bold text-gray-900 dark:text-white text-lg mb-2 truncate">{product.name}</h4>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xl font-bold text-gray-900 dark:text-white">${product.price.toFixed(2)}</span>
+                                    <span className="text-xl font-bold text-gray-900 dark:text-white">
+                                        {product.currency} {product.price.toFixed(2)}
+                                    </span>
+                                    {!product.inStock && (
+                                        <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-md">
+                                            Out of Stock
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -997,7 +1052,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
-            
+
             {/* Sidebar */}
             <aside className={`fixed lg:relative w-72 lg:w-64 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-800 flex flex-col z-40 h-full transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
@@ -1070,7 +1125,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     </button>
                 </div>
             </aside>
-            
+
             <main className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
                 <header className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border-b border-gray-200 dark:border-neutral-800 p-4 sm:p-6 flex items-center justify-between z-10">
                     <div className="flex items-center gap-3">
@@ -1098,7 +1153,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </button>
                     </div>
                 </header>
-                
+
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
                     <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-30">
                         <Plasma
@@ -1121,7 +1176,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     </div>
                 </div>
             </main>
-            
+
             <ConfirmationModal
                 isOpen={confirmation.isOpen}
                 onClose={() => setConfirmation({ ...confirmation, isOpen: false })}

@@ -85,6 +85,8 @@ router.post('/', authenticateToken, upload.array('images', 10), async (req, res)
       category: req.body.category,
       price: parseFloat(req.body.price),
       description: req.body.description,
+      inStock: req.body.inStock === 'true' || req.body.inStock === true,
+      currency: req.body.currency || 'TND',
       images: imageUrls
     };
 
@@ -116,9 +118,11 @@ router.patch('/:id', authenticateToken, upload.array('images', 10), async (req, 
     if (req.body.category !== undefined) updateData.category = req.body.category;
     if (req.body.price !== undefined) updateData.price = parseFloat(req.body.price);
     if (req.body.description !== undefined) updateData.description = req.body.description;
+    if (req.body.inStock !== undefined) updateData.inStock = req.body.inStock === 'true' || req.body.inStock === true;
+    if (req.body.currency !== undefined) updateData.currency = req.body.currency;
 
     // Handle image update
-    if (req.files && Array.isArray(req.files)) {
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       // Delete old image files if they are local uploads
       const oldProduct = await Product.findById(req.params.id);
       if (oldProduct && oldProduct.images) {

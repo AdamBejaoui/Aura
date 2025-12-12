@@ -131,50 +131,66 @@ const ProductDetailModal = ({
                   <span className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
                     {product.price.toLocaleString("en-US", {
                       style: "currency",
-                      currency: "USD",
+                      currency: product.currency || "USD",
                     })}
                   </span>
-                  <span className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium px-2 py-0.5 bg-green-50 dark:bg-green-900/20 rounded">
-                    In Stock
-                  </span>
+                  {product.inStock ? (
+                    <span className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium px-2 py-0.5 bg-green-50 dark:bg-green-900/20 rounded">
+                      In Stock
+                    </span>
+                  ) : (
+                    <span className="text-xs sm:text-sm text-red-600 dark:text-red-400 font-medium px-2 py-0.5 bg-red-50 dark:bg-red-900/20 rounded">
+                      Out of Stock
+                    </span>
+                  )}
                 </div>
+              </div>
 
-                <div className="prose prose-sm dark:prose-invert">
-                  <p className="text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-300 line-clamp-3 md:line-clamp-none">
-                    {product.description}
-                  </p>
+              <div className="prose prose-sm dark:prose-invert">
+                <p className="text-sm sm:text-base leading-relaxed text-gray-600 dark:text-gray-300 line-clamp-3 md:line-clamp-none">
+                  {product.description}
+                </p>
+              </div>
+
+              {/* Extra details */}
+              <div className="grid grid-cols-2 gap-3 py-3 border-y border-gray-100 dark:border-neutral-800">
+                <div>
+                  <span className="block text-[10px] sm:text-xs text-gray-500 uppercase">Material</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Premium Cotton</span>
                 </div>
-
-                {/* Extra details */}
-                <div className="grid grid-cols-2 gap-3 py-3 border-y border-gray-100 dark:border-neutral-800">
-                  <div>
-                    <span className="block text-[10px] sm:text-xs text-gray-500 uppercase">Material</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">Premium Cotton</span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] sm:text-xs text-gray-500 uppercase">Fit</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">Regular Fit</span>
-                  </div>
+                <div>
+                  <span className="block text-[10px] sm:text-xs text-gray-500 uppercase">Fit</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Regular Fit</span>
                 </div>
               </div>
             </div>
+
 
             {/* Pinned Action Button */}
             <div className="p-4 sm:p-8 sm:pt-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 z-10">
               <button
                 onClick={() => {
-                  onAddToCart?.(product);
-                  onClose();
+                  if (product.inStock) {
+                    onAddToCart?.(product);
+                    onClose();
+                  }
                 }}
-                className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-stone-900 dark:bg-white px-6 py-3 sm:py-4 text-white dark:text-black transition-all hover:bg-black dark:hover:bg-gray-200 hover:shadow-lg hover:shadow-stone-900/25 dark:hover:shadow-white/10 active:scale-[0.98]"
+                disabled={!product.inStock}
+                className={`group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-6 py-3 sm:py-4 transition-all ${product.inStock
+                  ? "bg-stone-900 dark:bg-white text-white dark:text-black hover:bg-black dark:hover:bg-gray-200 hover:shadow-lg hover:shadow-stone-900/25 dark:hover:shadow-white/10 active:scale-[0.98]"
+                  : "bg-gray-200 dark:bg-neutral-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                  }`}
               >
                 <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:-translate-y-1 group-hover:rotate-12" />
-                <span className="font-bold text-sm sm:text-lg">Add to Cart</span>
+                <span className="font-bold text-sm sm:text-lg">
+                  {product.inStock ? "Add to Cart" : "Out of Stock"}
+                </span>
               </button>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   );
 };

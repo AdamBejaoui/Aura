@@ -9,6 +9,7 @@ import CartCheckout from "./components/CartCheckout";
 import { useCartStore } from "./store/cartStore";
 import AdminLogin from "./components/AdminLogin";
 import AdminDashboard from "./components/AdminDashboard";
+import Footer from "./components/Footer";
 
 const API_BASE = '';
 
@@ -21,6 +22,8 @@ export type Product = {
   rating: number;
   reviews: number;
   images: string[];
+  inStock: boolean;
+  currency: string;
 };
 
 const categories = [
@@ -32,10 +35,10 @@ const categories = [
   "Evening Luxe",
 ] as const;
 
-const formatCurrency = (value: number) =>
+const formatCurrency = (value: number, currency: string = 'USD') =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: currency,
     maximumFractionDigits: 0,
   }).format(value);
 
@@ -101,6 +104,8 @@ function Store() {
             rating: product.rating || 0,
             reviews: product.reviews || 0,
             images,
+            inStock: product.inStock !== undefined ? product.inStock : true,
+            currency: product.currency || 'USD',
           };
         });
         setProducts(formattedProducts);
@@ -208,15 +213,7 @@ function Store() {
 
           <div className="flex items-center gap-4">
             {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-              aria-label="Toggle theme"
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
 
-            {/* Cart Button */}
             <button
               onClick={() => toggleCheckout(true)}
               className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
@@ -228,6 +225,16 @@ function Store() {
                 </span>
               )}
             </button>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            {/* Cart Button */}
+
           </div>
         </div>
       </header>
@@ -320,14 +327,19 @@ function Store() {
                     {product.name}
                   </h3>
                   <div className="text-xl font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(product.price)}
+                    {formatCurrency(product.price, product.currency)}
                   </div>
+                  {!product.inStock && (
+                    <div className="mt-2 text-red-500 font-bold text-sm">Out of Stock</div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      <Footer />
 
       {/* Modals */}
       <ProductDetailModal
