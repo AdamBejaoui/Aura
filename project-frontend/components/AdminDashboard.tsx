@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Plasma from "./Plasma";
 import ConfirmationModal from "./ConfirmationModal";
+import { useAuthStore } from "../store/authStore";
 
 // --- Interfaces ---
 interface Product {
@@ -47,6 +48,11 @@ const categories = [
 
 const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const navigate = useNavigate();
+    const { user } = useAuthStore();
+
+    // Permission helper
+    const isFullAdmin = user?.role === 'admin';
+
     // --- State ---
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
@@ -66,6 +72,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
     // UI State
     const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -73,6 +80,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const [activeSection, setActiveSection] = useState<'dashboard' | 'addProduct' | 'orders' | 'users' | 'reviews'>('dashboard');
     const [users, setUsers] = useState<any[]>([]);
     const [reviews, setReviews] = useState<any[]>([]);
+    const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
 
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
@@ -127,12 +135,19 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                setLoading(true);
+                // Only show full-page loading on initial mount
+                if (products.length === 0 && orders.length === 0) {
+                    setLoading(true);
+                } else {
+                    setIsRefreshing(true);
+                }
+
                 if (!token) {
                     setError('Missing admin token. Please login.');
                     setProducts([]);
                     setOrders([]);
                     setLoading(false);
+                    setIsRefreshing(false);
                     return;
                 }
 
@@ -161,6 +176,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 }
             } finally {
                 setLoading(false);
+                setIsRefreshing(false);
             }
         };
 
@@ -344,13 +360,31 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         }
     };
 
-    const navItems = [
-        { id: 'dashboard', label: 'Dashboard', description: 'Overview & Stats' },
-        { id: 'addProduct', label: 'Add Product', description: 'Inventory Management' },
-        { id: 'orders', label: 'Orders', description: 'Order Processing' },
-        { id: 'users', label: 'Users', description: 'Customer Accounts' },
-        { id: 'reviews', label: 'Reviews', description: 'Product Reviews' },
+    const handleUpdateUserRole = async (userId: string, newRole: string) => {
+        try {
+            setUpdatingRoleUserId(userId);
+            const response = await axios.patch(`/api/auth/users/${userId}/role`, { role: newRole }, authHeader);
+            setUsers(users.map(u => u._id === userId ? response.data : u));
+            setError('');
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to update user role');
+        } finally {
+            setUpdatingRoleUserId(null);
+        }
+    };
+
+
+    const allNavItems = [
+        { id: 'dashboard', label: 'Dashboard', description: 'Overview & Stats', adminOnly: false },
+        { id: 'addProduct', label: 'Add Product', description: 'Inventory Management', adminOnly: true },
+        { id: 'orders', label: 'Orders', description: 'Order Processing', adminOnly: false },
+        { id: 'users', label: 'Users', description: 'Customer Accounts', adminOnly: true },
+        { id: 'reviews', label: 'Reviews', description: 'Product Reviews', adminOnly: false },
     ];
+
+    // Filter nav items based on permissions
+    const navItems = allNavItems.filter(item => !item.adminOnly || isFullAdmin);
+
 
     const handleLogoutClick = () => {
         setConfirmation({
@@ -886,13 +920,15 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleDeleteOrder(order._id)}
-                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                                title="Delete Order"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+                                            {isFullAdmin && (
+                                                <button
+                                                    onClick={() => handleDeleteOrder(order._id)}
+                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                                    title="Delete Order"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -940,12 +976,32 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
-                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
-                                                    : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-                                                    }`}>
-                                                    {user.role}
-                                                </span>
+                                                {isFullAdmin ? (
+                                                    <select
+                                                        value={user.role}
+                                                        onChange={(e) => handleUpdateUserRole(user._id, e.target.value)}
+                                                        disabled={updatingRoleUserId === user._id}
+                                                        className={`px-3 py-1.5 text-xs font-medium rounded-full border-0 outline-none transition-all ${user.role === 'admin'
+                                                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
+                                                            : user.role === 'co-admin'
+                                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+                                                                : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                                            } ${updatingRoleUserId === user._id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                    >
+                                                        <option value="customer">customer</option>
+                                                        <option value="co-admin">co-admin</option>
+                                                        <option value="admin">admin</option>
+                                                    </select>
+                                                ) : (
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
+                                                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
+                                                        : user.role === 'co-admin'
+                                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+                                                            : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                                                        }`}>
+                                                        {user.role}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isVerified
@@ -959,7 +1015,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                 {new Date(user.createdAt).toLocaleDateString()}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {user.role !== 'admin' && (
+                                                {isFullAdmin && user.role !== 'admin' && (
                                                     <button
                                                         onClick={() => setConfirmation({
                                                             isOpen: true,

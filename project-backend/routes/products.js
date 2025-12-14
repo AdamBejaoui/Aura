@@ -40,15 +40,14 @@ const router = express.Router();
 
 // --- ADMIN ROUTES ---
 
-// Get all reviews (admin only)
+// Get all reviews (admin and co-admin)
 router.get('/reviews/all', authenticateToken, async (req, res) => {
   try {
-    // Check for admin role logic can be simpler if middleware attached user correctly
-    // Verify admin role
+    // Check for admin or co-admin role
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'co-admin'].includes(user.role)) {
       // Allow hardcoded admin too
-      if (req.user.role !== 'admin') {
+      if (!['admin', 'co-admin'].includes(req.user.role)) {
         return res.status(403).json({ message: 'Access denied' });
       }
     }
@@ -74,10 +73,10 @@ router.get('/reviews/all', authenticateToken, async (req, res) => {
   }
 });
 
-// Delete a specific review (admin only)
+// Delete a specific review (admin and co-admin)
 router.delete('/:id/reviews/:reviewId', authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (!['admin', 'co-admin'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

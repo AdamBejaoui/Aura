@@ -68,6 +68,7 @@ function Store() {
   const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>("All");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
@@ -86,7 +87,7 @@ function Store() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const { user, isAuthenticated, logout } = useAuthStore();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'co-admin';
   const [filters, setFilters] = useState({
     minPrice: '',
     maxPrice: '',
@@ -133,7 +134,13 @@ function Store() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        setLoading(true);
+        // Only show full-page loading on initial mount
+        if (products.length === 0) {
+          setLoading(true);
+        } else {
+          setIsRefreshing(true);
+        }
+
         const params = new URLSearchParams();
         if (activeCategory !== 'All') params.append('category', activeCategory);
         if (filters.minPrice) params.append('minPrice', filters.minPrice);
@@ -174,6 +181,7 @@ function Store() {
         setError("Failed to load products.");
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
     fetchProducts();
@@ -549,6 +557,7 @@ function Store() {
 }
 
 function App() {
+  const { user, token: authToken, isAuthenticated, logout: authLogout } = useAuthStore();
   const [adminToken, setAdminToken] = useState<string | null>(() => {
     const token = localStorage.getItem("adminToken");
     if (token) {
@@ -557,6 +566,16 @@ function App() {
     return token;
   });
 
+  // Sync authStore token with adminToken when admin user is logged in
+  useEffect(() => {
+    if (isAuthenticated && (user?.role === 'admin' || user?.role === 'co-admin') && authToken && authToken !== adminToken) {
+      // Admin/co-admin user logged in through regular auth, sync the token
+      setAdminToken(authToken);
+      localStorage.setItem("adminToken", authToken);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${authToken}`;
+    }
+  }, [isAuthenticated, user, authToken, adminToken]);
+
   const handleAdminLogin = (token: string) => {
     setAdminToken(token);
     localStorage.setItem("adminToken", token);
@@ -564,8 +583,10 @@ function App() {
   };
 
   const handleAdminLogout = () => {
+    // Clear both admin token and regular auth
     setAdminToken(null);
     localStorage.removeItem("adminToken");
+    authLogout(); // Also logout from authStore
     delete axios.defaults.headers.common["Authorization"];
   };
 
@@ -589,7 +610,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            adminToken ? (
+            adminToken && (user?.role === 'admin' || user?.role === 'co-admin') ? (
               <AdminDashboard
                 token={adminToken}
                 onLogout={handleAdminLogout}
