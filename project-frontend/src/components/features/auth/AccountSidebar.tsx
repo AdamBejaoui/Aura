@@ -1,0 +1,325 @@
+import React, { useState, useEffect } from 'react';
+import { User, ShoppingBag, Loader2, Save, Key, Mail, MapPin, Phone, Camera, Shield, LogOut, X } from 'lucide-react';
+import { useAuthStore } from '../../../store/authStore';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { motion, AnimatePresence } from 'framer-motion';
+
+type AccountSidebarProps = {
+    isOpen: boolean;
+    onClose: () => void;
+};
+
+const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
+    const { user, login, logout, setOrdersOpen } = useAuthStore();
+
+    const [activeTab, setActiveTab] = useState<'info' | 'security'>('info');
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Form States
+    const [formData, setFormData] = useState({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        address: user?.address || '',
+    });
+
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    });
+
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                address: user.address || '',
+            });
+        }
+    }, [user]);
+
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            const res = await axios.put('/api/auth/me', {
+                name: formData.name,
+                phone: formData.phone,
+                address: formData.address,
+            });
+            const token = useAuthStore.getState().token;
+            if (token) {
+                login(res.data, token);
+            }
+            toast.success('IDENTITY SYNCHRONIZED');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'SYNCHRONIZATION FAILED');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            toast.error("SECURITY PROTOCOL: PASSWORDS MISMATCH");
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await axios.put('/api/auth/me/password', {
+                currentPassword: passwordData.currentPassword,
+                newPassword: passwordData.newPassword,
+            });
+            toast.success('SECURITY CREDENTIALS UPDATED');
+            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'PROTOCOL BREACH: UPDATE FAILED');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[70] flex justify-end">
+            {/* Backdrop */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={onClose}
+                className="absolute inset-0 bg-black/20 backdrop-blur-md"
+            />
+
+            {/* Sidebar Container */}
+            <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+                className="relative w-full max-w-xl bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 rounded-l-[3rem] overflow-hidden"
+            >
+                {/* Header Section */}
+                <div className="p-8 md:p-10 flex items-center justify-between border-b border-stone-100 dark:border-neutral-800">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2.5 bg-stone-50 dark:bg-neutral-800 rounded-2xl border border-stone-100 dark:border-neutral-800">
+                            <User className="w-5 h-5 text-stone-900 dark:text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-stone-900 dark:text-white uppercase tracking-tighter">Member Protocol</h2>
+                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{user?.role || 'Client'}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-3 text-stone-400 hover:text-stone-900 dark:hover:text-white bg-stone-50 dark:bg-neutral-800 rounded-2xl border border-stone-100 dark:border-neutral-800 transition-all hover:scale-110 hover:rotate-90 duration-300"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Navigation Tabs */}
+                <div className="px-8 md:px-10 pt-8 flex gap-2">
+                    <button
+                        onClick={() => setActiveTab('info')}
+                        className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'info'
+                            ? 'bg-stone-900 dark:bg-white text-white dark:text-black shadow-xl'
+                            : 'text-stone-400 hover:text-stone-900 dark:hover:text-white bg-stone-50 dark:bg-neutral-800'
+                            }`}
+                    >
+                        Profile
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('security')}
+                        className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'security'
+                            ? 'bg-stone-900 dark:bg-white text-white dark:text-black shadow-xl'
+                            : 'text-stone-400 hover:text-stone-900 dark:hover:text-white bg-stone-50 dark:bg-neutral-800'
+                            }`}
+                    >
+                        Security
+                    </button>
+                    <button
+                        onClick={() => {
+                            onClose();
+                            setOrdersOpen(true);
+                        }}
+                        className="px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest text-stone-400 hover:text-stone-900 dark:hover:text-white bg-stone-50 dark:bg-neutral-800 transition-all ml-auto"
+                    >
+                        <ShoppingBag className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 overflow-y-auto no-scrollbar p-8 md:p-10">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {activeTab === 'info' ? (
+                                <form onSubmit={handleUpdateProfile} className="space-y-8">
+                                    <div className="flex flex-col items-center mb-10 group">
+                                        <div className="relative p-1 bg-gradient-to-tr from-stone-200 to-stone-400 dark:from-neutral-800 dark:to-neutral-600 rounded-[2.5rem]">
+                                            <div className="w-24 h-24 bg-stone-50 dark:bg-neutral-950 rounded-[2.3rem] flex items-center justify-center relative overflow-hidden">
+                                                <span className="text-3xl font-black text-stone-900 dark:text-white">{user?.name?.charAt(0).toUpperCase()}</span>
+                                                <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
+                                                    <Camera className="w-6 h-6 text-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Identity</label>
+                                            <div className="relative group">
+                                                <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <input
+                                                    type="text"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Archives (Email)</label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
+                                                <input
+                                                    type="email"
+                                                    value={formData.email}
+                                                    disabled
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-100/50 dark:bg-neutral-950 text-stone-400 cursor-not-allowed text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Link (Phone)</label>
+                                            <div className="relative group">
+                                                <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <input
+                                                    type="tel"
+                                                    value={formData.phone}
+                                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Anchor (Address)</label>
+                                            <div className="relative group">
+                                                <MapPin className="absolute left-5 top-5 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <textarea
+                                                    rows={3}
+                                                    value={formData.address}
+                                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all resize-none text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="w-full py-5 bg-stone-900 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-2xl flex items-center justify-center gap-4 mt-6"
+                                    >
+                                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        Update Identity
+                                    </button>
+                                </form>
+                            ) : (
+                                <form onSubmit={handleChangePassword} className="space-y-8">
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Current Key</label>
+                                            <div className="relative group">
+                                                <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <input
+                                                    type="password"
+                                                    required
+                                                    value={passwordData.currentPassword}
+                                                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">New Layer</label>
+                                            <div className="relative group">
+                                                <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <input
+                                                    type="password"
+                                                    required
+                                                    value={passwordData.newPassword}
+                                                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Confirm Layer</label>
+                                            <div className="relative group">
+                                                <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <input
+                                                    type="password"
+                                                    required
+                                                    value={passwordData.confirmPassword}
+                                                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="w-full py-5 bg-stone-900 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-[0.3em] rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-2xl flex items-center justify-center gap-4 mt-6"
+                                    >
+                                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                                        Upgrade Security
+                                    </button>
+                                </form>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+
+                {/* Secure Badge Bottom */}
+                <div className="p-10 flex flex-col items-center gap-6 bg-stone-50/50 dark:bg-black/20 border-t border-stone-100 dark:border-neutral-800">
+                    <button
+                        onClick={() => {
+                            logout();
+                            onClose();
+                        }}
+                        className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 hover:text-rose-600 transition-all"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Terminate Link
+                    </button>
+                    <div className="flex items-center gap-3 opacity-20">
+                        <Shield className="w-3 h-3" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.5em]">End-to-End Secure</span>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+export default AccountSidebar;

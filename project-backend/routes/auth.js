@@ -19,19 +19,21 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour
 
     user = new User({
       name,
       email,
       password,
       isVerified: false,
-      verificationToken
+      verificationCode,
+      verificationCodeExpires
     });
 
     await user.save();
 
-    const emailSent = await sendVerificationEmail(email, verificationToken);
+    const emailSent = await sendVerificationEmail(email, verificationCode);
 
     if (!emailSent) {
       // Optionally handle email failure (e.g. delete user or warn)
@@ -39,8 +41,9 @@ router.post('/signup', async (req, res) => {
     }
 
     res.status(201).json({
-      message: 'Registration successful! Please check your email to verify your account.',
-      requiresVerification: true
+      message: 'Registration successful! Please check your email for the verification code.',
+      requiresVerification: true,
+      email: email // Return email to help frontend state
     });
 
   } catch (error) {
@@ -51,15 +54,22 @@ router.post('/signup', async (req, res) => {
 // Verify Email
 router.post('/verify-email', async (req, res) => {
   try {
-    const { token } = req.body;
-    const user = await User.findOne({ verificationToken: token });
+    const { email, code } = req.body;
+
+    // Find user by email and basic check
+    const user = await User.findOne({
+      email,
+      verificationCode: code,
+      verificationCodeExpires: { $gt: Date.now() }
+    });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired verification token' });
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
     user.isVerified = true;
-    user.verificationToken = undefined;
+    user.verificationCode = undefined;
+    user.verificationCodeExpires = undefined;
     await user.save();
 
     const jwtToken = jwt.sign(
@@ -70,6 +80,35 @@ router.post('/verify-email', async (req, res) => {
 
     res.json({ token: jwtToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Resend Verification Code
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour
+
+    user.verificationCode = verificationCode;
+    user.verificationCodeExpires = verificationCodeExpires;
+    await user.save();
+
+    await sendVerificationEmail(email, verificationCode);
+
+    res.json({ message: 'Verification code resent successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -130,6 +169,59 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update profile
+router.put('/me', authenticateToken, async (req, res) => {
+  try {
+    const { name, phone, address } = req.body;
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (address) user.address = address;
+
+    await user.save();
+
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      address: user.address
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update password
+router.put('/me/password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid current password' });
+    }
+
+    user.password = newPassword;
+    await user.save(); // Pre-save hook will hash it
+
+    res.json({ message: 'Password updated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -7,15 +7,23 @@ type User = {
     name: string;
     email: string;
     role: 'customer' | 'admin' | 'co-admin';
+    phone?: string;
+    address?: string;
 };
 
 type AuthState = {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
+    isProfileOpen: boolean;
+    isOrdersOpen: boolean;
+    isAuthOpen: boolean;
     login: (userData: User, token: string) => void;
     logout: () => void;
     checkAuth: () => Promise<void>;
+    setProfileOpen: (open: boolean) => void;
+    setOrdersOpen: (open: boolean) => void;
+    setAuthOpen: (open: boolean) => void;
 };
 
 // Configure axios interceptor to add token to requests
@@ -33,13 +41,16 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             token: null,
             isAuthenticated: false,
+            isProfileOpen: false,
+            isOrdersOpen: false,
+            isAuthOpen: false,
             login: (user, token) => {
                 configureAxios(token);
-                set({ user, token, isAuthenticated: true });
+                set({ user, token, isAuthenticated: true, isAuthOpen: false });
             },
             logout: () => {
                 configureAxios(null);
-                set({ user: null, token: null, isAuthenticated: false });
+                set({ user: null, token: null, isAuthenticated: false, isProfileOpen: false, isOrdersOpen: false, isAuthOpen: false });
             },
             checkAuth: async () => {
                 const { token } = get();
@@ -54,6 +65,9 @@ export const useAuthStore = create<AuthState>()(
                     get().logout();
                 }
             },
+            setProfileOpen: (open) => set({ isProfileOpen: open }),
+            setOrdersOpen: (open) => set({ isOrdersOpen: open }),
+            setAuthOpen: (open) => set({ isAuthOpen: open }),
         }),
         {
             name: 'aura-auth',

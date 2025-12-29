@@ -12,6 +12,14 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
     },
+    phone: {
+        type: String,
+        trim: true,
+    },
+    address: {
+        type: String,
+        trim: true,
+    },
     password: {
         type: String,
         required: true,
@@ -25,7 +33,8 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    verificationToken: String,
+    verificationCode: String,
+    verificationCodeExpires: Date,
     createdAt: {
         type: Date,
         default: Date.now,

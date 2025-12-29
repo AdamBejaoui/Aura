@@ -1,0 +1,124 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Remove default focus rings (we’ll add custom ones) */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-stone-400/50;
+}
+
+/* Mobile App Optimization */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overscroll-behavior-y: none;
+  user-select: none;
+  /* Disable text selection for app-like feel */
+  -webkit-user-select: none;
+}
+
+/* Allow selection in inputs */
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+
+@layer components {
+  .luxury-btn {
+    @apply relative overflow-hidden rounded-full px-6 py-3 text-sm font-medium transition-all duration-300;
+  }
+
+  .luxury-btn-primary {
+    @apply luxury-btn bg-stone-900 text-white hover:bg-stone-800;
+  }
+
+  .luxury-btn-secondary {
+    @apply luxury-btn bg-transparent border border-stone-300 text-stone-700 hover:bg-stone-100;
+  }
+
+  .luxury-card {
+    @apply bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-sm border border-stone-100 dark:border-neutral-800 overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2;
+  }
+
+  .premium-blur {
+    @apply backdrop-blur-xl bg-white/70 dark:bg-neutral-900/70 border border-white/20 dark:border-neutral-800/20;
+  }
+
+  .text-aura-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-stone-900 via-stone-800 to-stone-600 dark:from-white dark:via-stone-200 dark:to-stone-400;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .shadow-premium {
+    --shadow-color: rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 40px -10px var(--shadow-color), 0 5px 20px -15px var(--shadow-color);
+  }
+}
+
+
+/* Toastify Customization */
+.Toastify__toast-container {
+  width: min(90vw, 400px);
+}
+
+.Toastify__toast {
+  @apply rounded-[1.5rem] border border-stone-100 dark:border-neutral-800 backdrop-blur-xl p-6 overflow-hidden !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.Toastify__toast-body {
+  @apply m-0 p-0 font-black uppercase tracking-tighter text-[10px] !important;
+}
+
+.Toastify__toast-icon {
+  @apply w-4 h-4 mr-4 !important;
+}
+
+.Toastify__toast--success {
+  @apply bg-white/90 dark:bg-neutral-900/90 text-stone-900 dark:text-white !important;
+  --toastify-icon-color-success: currentColor;
+}
+
+.Toastify__toast--error {
+  @apply bg-rose-50/90 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/20 !important;
+  --toastify-icon-color-error: currentColor;
+}
+
+.Toastify__progress-bar {
+  @apply h-1 rounded-b-[1.5rem] !important;
+}
+
+.Toastify__progress-bar--success {
+  @apply bg-stone-900 dark:bg-white !important;
+}
+
+.Toastify__progress-bar--error {
+  @apply bg-rose-500 !important;
+}
+
+.Toastify__close-button {
+  @apply text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors opacity-100 !important;
+}

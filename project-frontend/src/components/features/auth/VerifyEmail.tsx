@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuthStore } from '../store/authStore';
-import Plasma from './Plasma';
+import { useAuthStore } from '../../../store/authStore';
+import Plasma from '../../ui/Plasma';
 
 const VerifyEmail = () => {
     const [searchParams] = useSearchParams();

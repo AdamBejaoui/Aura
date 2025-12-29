@@ -1,17 +1,28 @@
-import React from 'react';
 import { Facebook, Instagram, Twitter, Youtube, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Footer() {
+    const navigate = useNavigate();
+
     return (
         <footer className="bg-white dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-800 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
                     {/* Brand & Newsletter */}
                     <div className="space-y-6 lg:col-span-1">
-                        <div className="flex items-center gap-2">
+                        <div
+                            className="flex items-center gap-2 cursor-pointer group"
+                            onClick={() => {
+                                if (window.location.pathname === '/') {
+                                    window.location.reload();
+                                } else {
+                                    navigate('/');
+                                }
+                            }}
+                        >
                             <div className="relative w-4 h-4 
                 bg-gray-900 dark:bg-white 
-                [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]">
+                [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)] group-hover:scale-110 transition-transform">
                             </div>
                             <span className="text-xl font-bold text-gray-900 dark:text-white">
                                 Aura

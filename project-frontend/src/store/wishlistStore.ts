@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Product } from '../App';
+import type { Product } from '../types';
 
 type WishlistStore = {
     items: Product[];

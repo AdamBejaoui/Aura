@@ -130,33 +130,30 @@ const sendOrderNotification = async (order, products) => {
   }
 };
 
-const sendVerificationEmail = async (email, token) => {
+const sendVerificationEmail = async (email, code) => {
   if (!transporter) return false;
-
-  const verificationLink = `http://localhost:5000/verify-email?token=${token}`;
 
   try {
     const mailOptions = {
       from: `"Aura Store" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: `Verify your Aura Account`,
+      subject: `Your Aura Verification Code`,
       html: `
           <!DOCTYPE html>
           <html>
           <head>
             <style>
               body { font-family: monospace; text-align: center; padding: 40px; background: #000; color: #fff; }
-              .btn { 
-                background: #fff; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block; margin-top: 20px;
+              .code { 
+                font-size: 32px; letter-spacing: 5px; font-weight: bold; color: #fff; margin: 20px 0; display: block;
               }
-              .btn:hover { opacity: 0.9; }
             </style>
           </head>
           <body>
             <h1>Verify Your Email</h1>
-            <p>Welcome to Aura. Please verify your email to access your account.</p>
-            <a href="${verificationLink}" class="btn">Verify Email</a>
-            <p style="margin-top: 30px; opacity: 0.5; font-size: 12px;">Link expires in 24 hours.</p>
+            <p>Welcome to Aura. Use the code below to verify your account:</p>
+            <span class="code">${code}</span>
+            <p style="margin-top: 30px; opacity: 0.5; font-size: 12px;">Code expires in 1 hour.</p>
           </body>
           </html>
         `
