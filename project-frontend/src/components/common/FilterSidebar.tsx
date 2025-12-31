@@ -1,4 +1,5 @@
 import { Filter, X } from "lucide-react";
+import { motion } from "framer-motion";
 
 type FilterSidebarProps = {
     isOpen: boolean;
@@ -14,27 +15,32 @@ type FilterSidebarProps = {
 };
 
 const FilterSidebar = ({
-    isOpen,
+    isOpen: _isOpen,
     onClose,
     filters,
     onFilterChange,
     onClearFilters,
 }: FilterSidebarProps) => {
     return (
-        <>
+        <div className="fixed inset-0 z-[70] flex justify-end">
             {/* Backdrop */}
-            <div
-                className={`fixed inset-0 z-[60] bg-black/20 backdrop-blur-md transition-opacity duration-500 lg:hidden ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-                    }`}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-stone-950/40 backdrop-blur-md"
                 onClick={onClose}
             />
 
             {/* Sidebar */}
-            <div
-                className={`fixed inset-y-0 right-0 z-[70] w-full max-sm:max-w-xs max-w-sm bg-white dark:bg-neutral-900 shadow-[0_0_50px_rgba(0,0,0,0.1)] transform transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] border-l border-stone-100 dark:border-neutral-800 rounded-l-[3rem] ${isOpen ? "translate-x-0" : "translate-x-full"
-                    }`}
+            <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+                className="relative w-full max-w-md bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 md:rounded-l-[3rem] p-8 md:p-10 pt-safe overflow-hidden"
             >
-                <div className="flex flex-col h-full p-8 md:p-10">
+                <div className="flex flex-col h-full">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-12">
                         <div className="flex items-center gap-3">
@@ -147,8 +153,8 @@ const FilterSidebar = ({
                         </button>
                     </div>
                 </div>
-            </div>
-        </>
+            </motion.div>
+        </div>
     );
 };
 

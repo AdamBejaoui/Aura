@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -31,6 +31,7 @@ import ConfirmationModal from "../components/common/ConfirmationModal";
 import { useWishlistStore } from "../store/wishlistStore";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
+import { useUIStore } from "../store/uiStore";
 import OrderHistorySidebar from "../components/features/order/OrderHistorySidebar";
 import AccountSidebar from "../components/features/auth/AccountSidebar";
 import { Product } from "../types";
@@ -53,9 +54,60 @@ const formatCurrency = (value: number, currency: string = 'USD') =>
         maximumFractionDigits: 0,
     }).format(value);
 
+// Product Image Carousel Component for hover effect
+const ProductImageCarousel = ({ images, productName }: { images: string[]; productName: string }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isHovered, setIsHovered] = useState(false);
+    const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    React.useEffect(() => {
+        if (isHovered && images.length > 1) {
+            intervalRef.current = setInterval(() => {
+                setCurrentIndex((prev) => (prev + 1) % images.length);
+            }, 800); // Change image every 0.8 seconds
+        } else {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+            setCurrentIndex(0); // Reset to first image when not hovered
+        }
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, [isHovered, images.length]);
+
+    return (
+        <div
+            className="relative w-full h-full"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {images.map((image, index) => (
+                <img
+                    key={index}
+                    src={image || "https://placehold.co/800x1000/f8fafc/94a3b8?text=No+Image"}
+                    alt={`${productName} - Image ${index + 1}`}
+                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-[400ms] group-hover/card:scale-110 ${index === currentIndex
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-105'
+                        }`}
+                    onError={(e) =>
+                    ((e.target as HTMLImageElement).src =
+                        "https://placehold.co/800x1000/f8fafc/94a3b8?text=No+Image")
+                    }
+                />
+            ))}
+        </div>
+    );
+};
+
 function Home() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("");
+    const mainSearchRef = useRef<HTMLInputElement>(null);
+    const mobileSearchRef = useRef<HTMLInputElement>(null);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>("All");
@@ -65,14 +117,38 @@ function Home() {
     const [pullDistance, setPullDistance] = useState(0);
     const [isPulling, setIsPulling] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { isMobileSearchOpen, setMobileSearchOpen } = useUIStore();
     const { theme, toggleTheme } = useThemeStore();
     const isDark = theme === 'dark';
+
+    useEffect(() => {
+        if (isMobileSearchOpen) {
+            setTimeout(() => {
+                mobileSearchRef.current?.focus();
+            }, 100);
+        }
+    }, [isMobileSearchOpen]);
+
+    // Expose function to scroll to main search bar (for mobile nav)
+    useEffect(() => {
+        const handleScrollToSearch = () => {
+            if (mainSearchRef.current) {
+                mainSearchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                    mainSearchRef.current?.focus();
+                }, 300);
+            }
+        };
+
+        // Listen for custom event from mobile nav
+        window.addEventListener('scrollToMainSearch', handleScrollToSearch);
+        return () => window.removeEventListener('scrollToMainSearch', handleScrollToSearch);
+    }, []);
 
     // Filters State
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
     const {
         user,
         isAuthenticated,
@@ -303,7 +379,7 @@ function Home() {
             </div>
 
             {/* Header */}
-            <header className="sticky top-0 z-50 premium-blur px-4 sm:px-6 lg:px-10 py-5">
+            <header className="sticky top-0 z-50 premium-blur px-4 sm:px-6 lg:px-10 py-5 pt-safe md:pt-6">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
 
                     {/* LEFT: Star + Aura */}
@@ -321,6 +397,17 @@ function Home() {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-4">
+                        {/* Admin Dashboard Button (Mobile Only) */}
+                        {isAuthenticated && isAdmin && (
+                            <button
+                                onClick={() => navigate('/admin')}
+                                className="md:hidden p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-stone-50 dark:bg-neutral-800 rounded-2xl border border-stone-100 dark:border-neutral-800 hover:shadow-lg"
+                                aria-label="Admin Dashboard"
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                            </button>
+                        )}
+
                         {/* Theme Toggle */}
                         <button
                             onClick={toggleTheme}
@@ -529,6 +616,8 @@ function Home() {
                         <div className="relative flex-1 max-w-xl group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
                             <input
+                                ref={mainSearchRef}
+                                id="main-search-input"
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -584,16 +673,20 @@ function Home() {
                                                         onClick={() => handleOpenModal(product)}
                                                         className="flex-shrink-0 w-[280px] md:w-[340px] snap-start group/card relative bg-white dark:bg-neutral-900 rounded-[2.5rem] overflow-hidden border border-stone-100 dark:border-neutral-800 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 cursor-pointer"
                                                     >
-                                                        <div className="relative aspect-[4/5] overflow-hidden bg-stone-50 dark:bg-neutral-800">
-                                                            <img
-                                                                src={product.images[0]}
-                                                                alt={product.name}
-                                                                className="w-full h-full object-cover transition-transform duration-1000 group-hover/card:scale-110"
-                                                                onError={(e) =>
-                                                                ((e.target as HTMLImageElement).src =
-                                                                    "https://placehold.co/800x1000/f8fafc/94a3b8?text=No+Image")
-                                                                }
-                                                            />
+                                                        <div className="relative aspect-[1/1] overflow-hidden bg-stone-50 dark:bg-neutral-800">
+                                                            {product.images.length > 1 ? (
+                                                                <ProductImageCarousel images={product.images} productName={product.name} />
+                                                            ) : (
+                                                                <img
+                                                                    src={product.images[0] || "https://placehold.co/800x1000/f8fafc/94a3b8?text=No+Image"}
+                                                                    alt={product.name}
+                                                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover/card:scale-110"
+                                                                    onError={(e) =>
+                                                                    ((e.target as HTMLImageElement).src =
+                                                                        "https://placehold.co/800x1000/f8fafc/94a3b8?text=No+Image")
+                                                                    }
+                                                                />
+                                                            )}
                                                             <motion.button
                                                                 whileHover={{ scale: 1.1 }}
                                                                 whileTap={{ scale: 0.9 }}
@@ -620,10 +713,10 @@ function Home() {
                                                             </div>
                                                         </div>
 
-                                                        <div className="p-8">
-                                                            <div className="flex flex-col gap-2 mb-4">
+                                                        <div className="p-5">
+                                                            <div className="flex flex-col gap-1.5 mb-2">
                                                                 <div className="flex items-center justify-between">
-                                                                    <h3 className="font-black text-stone-900 dark:text-white text-lg tracking-tight truncate flex-1 uppercase">
+                                                                    <h3 className="font-black text-stone-900 dark:text-white text-sm tracking-tight truncate flex-1 uppercase">
                                                                         {product.name}
                                                                     </h3>
                                                                     <div className="flex items-center gap-1 ml-2">
@@ -638,10 +731,10 @@ function Home() {
                                                                 </div>
                                                             </div>
 
-                                                            <div className="flex items-center justify-between border-t border-stone-100 dark:border-neutral-800 pt-6 mt-2">
+                                                            <div className="flex items-center justify-between border-t border-stone-100 dark:border-neutral-800 pt-3 mt-2">
                                                                 <div className="flex flex-col">
                                                                     <span className="text-[8px] font-black text-stone-400 uppercase tracking-[0.3em] mb-1.5 opacity-60">Aura Edition</span>
-                                                                    <div className="text-2xl font-black text-stone-900 dark:text-white tracking-tighter transition-all duration-500 group-hover/card:tracking-normal">
+                                                                    <div className="text-xl font-black text-stone-900 dark:text-white tracking-tighter transition-all duration-500 group-hover/card:tracking-normal">
                                                                         {formatCurrency(product.price, product.currency)}
                                                                     </div>
                                                                 </div>
@@ -709,22 +802,81 @@ function Home() {
                     setIsModalOpen(false);
                 }}
             />
-            <CartCheckout
-                isOpen={checkoutOpen}
-                items={items}
-                confirmationMessage={confirmationMessage}
-                onClose={() => toggleCheckout(false)}
-                onUpdateQuantity={updateQuantity}
-                onSubmitOrder={() => { }}
-            />
-            <FilterSidebar
-                isOpen={isFilterOpen}
-                onClose={() => setIsFilterOpen(false)}
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                onClearFilters={clearFilters}
-            />
+            <AnimatePresence>
+                {checkoutOpen && (
+                    <CartCheckout
+                        isOpen={checkoutOpen}
+                        items={items}
+                        confirmationMessage={confirmationMessage}
+                        onClose={() => toggleCheckout(false)}
+                        onUpdateQuantity={updateQuantity}
+                        onSubmitOrder={() => { }}
+                    />
+                )}
+            </AnimatePresence>
+            <AnimatePresence>
+                {isFilterOpen && (
+                    <FilterSidebar
+                        isOpen={isFilterOpen}
+                        onClose={() => setIsFilterOpen(false)}
+                        filters={filters}
+                        onFilterChange={handleFilterChange}
+                        onClearFilters={clearFilters}
+                    />
+                )}
+            </AnimatePresence>
             <AuthModal isOpen={isAuthOpen} onClose={() => setAuthOpen(false)} />
+
+            {/* Mobile Search Modal */}
+            <AnimatePresence>
+                {isMobileSearchOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] lg:hidden"
+                        onClick={() => setMobileSearchOpen(false)}
+                    >
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                        <motion.div
+                            initial={{ y: -20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: -20, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="absolute top-0 left-0 right-0 p-4"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="bg-white dark:bg-neutral-900 rounded-[2rem] shadow-2xl border border-stone-100 dark:border-neutral-800 overflow-hidden">
+                                <div className="p-6">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <Search className="h-5 w-5 text-stone-400" />
+                                        <input
+                                            ref={mobileSearchRef}
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Search our collection..."
+                                            className="flex-1 bg-transparent border-none focus:outline-none text-stone-900 dark:text-white font-medium text-lg placeholder:text-stone-400"
+                                        />
+                                        <button
+                                            onClick={() => setMobileSearchOpen(false)}
+                                            className="p-2 hover:bg-stone-50 dark:hover:bg-neutral-800 rounded-xl transition-colors"
+                                        >
+                                            <span className="text-stone-600 dark:text-stone-400 font-bold text-sm">Close</span>
+                                        </button>
+                                    </div>
+                                    {searchTerm && (
+                                        <div className="text-xs font-bold text-stone-400 uppercase tracking-wider">
+                                            {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'} found
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <ConfirmationModal
                 isOpen={showLogoutConfirm}
                 onClose={() => setShowLogoutConfirm(false)}

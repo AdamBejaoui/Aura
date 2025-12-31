@@ -43,7 +43,9 @@ void mainImage(out vec4 o, vec2 C) {
   float i, d, z, T = iTime * uSpeed * uDirection;
   vec3 O, p, S;
 
-  for (vec2 r = iResolution.xy, Q; ++i < 60.; O += o.w/d*o.xyz) {
+  bool isMobile = iResolution.y < 800.0;
+  float iterations = isMobile ? 30. : 60.;
+  for (vec2 r = iResolution.xy, Q; ++i < iterations; O += o.w/d*o.xyz) {
     p = z*normalize(vec3(C-.5*r,r.y)); 
     p.z -= 4.; 
     S = p;
@@ -92,8 +94,17 @@ export const Plasma = ({
   const mousePos = useRef({ x: 0, y: 0 });
   const [webglSupported, setWebglSupported] = React.useState(true);
 
+  const [isMobileDevice, setIsMobileDevice] = React.useState(false);
+
   useEffect(() => {
-    if (!containerRef.current) return;
+    setIsMobileDevice(window.innerWidth < 768);
+    const handleResize = () => setIsMobileDevice(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current || isMobileDevice) return;
 
     const testCanvas = document.createElement('canvas');
     const testGl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
@@ -113,7 +124,7 @@ export const Plasma = ({
         webgl: 2,
         alpha: true,
         antialias: false,
-        dpr: Math.min(window.devicePixelRatio || 1, 2)
+        dpr: Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1 : 2)
       });
     } catch (e) {
       console.warn('WebGL not supported:', e);
@@ -212,9 +223,9 @@ export const Plasma = ({
     };
   }, [color, speed, direction, scale, opacity, mouseInteractive]);
 
-  if (!webglSupported) {
+  if (!webglSupported || isMobileDevice) {
     return (
-      <div className="w-full h-full overflow-hidden relative bg-gradient-to-br from-purple-900 via-blue-900 to-black" />
+      <div className="w-full h-full overflow-hidden relative bg-luxury-gradient opacity-50" />
     );
   }
 

@@ -5,39 +5,118 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../store/cartStore';
 import { useWishlistStore } from '../../store/wishlistStore';
 import { useAuthStore } from '../../store/authStore';
+import { useUIStore } from '../../store/uiStore';
 
 const MobileNav: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { items: cartItems, toggleCheckout } = useCartStore();
-    const { items: wishlistItems, toggleWishlist: toggleWishlistSidebar } = useWishlistStore();
-    const { isAuthenticated, setProfileOpen, setAuthOpen } = useAuthStore();
+    const { isMobileSearchOpen, setMobileSearchOpen } = useUIStore();
+    const { items: cartItems, checkoutOpen, toggleCheckout } = useCartStore();
+    const { items: wishlistItems, isOpen: isWishlistOpen, toggleWishlist: toggleWishlistSidebar } = useWishlistStore();
+    const { isAuthenticated, isProfileOpen, setProfileOpen, isAuthOpen, setAuthOpen } = useAuthStore();
 
     const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
     const wishlistCount = wishlistItems.length;
 
+    const closeAll = () => {
+        setMobileSearchOpen(false);
+        toggleCheckout(false);
+        if (isWishlistOpen) toggleWishlistSidebar();
+        setProfileOpen(false);
+        setAuthOpen(false);
+    };
+
     const navItems = [
-        { id: 'home', label: 'Home', icon: Home, path: '/' },
-        { id: 'search', label: 'Search', icon: Search, path: '/', action: () => { navigate('/'); setTimeout(() => document.querySelector('input[placeholder*="Search"]')?.scrollIntoView({ behavior: 'smooth' }), 100); } },
-        { id: 'cart', label: 'Cart', icon: ShoppingBag, path: '/', action: () => toggleCheckout(true), badge: cartCount },
-        { id: 'wishlist', label: 'Wishlist', icon: Heart, path: '/', action: () => toggleWishlistSidebar(), badge: wishlistCount },
         {
-            id: 'profile', label: 'Profile', icon: User, path: '/', action: () => {
-                if (isAuthenticated) {
-                    setProfileOpen(true);
+            id: 'home',
+            label: 'Home',
+            icon: Home,
+            path: '/',
+            action: () => {
+                closeAll();
+                if (location.pathname === '/') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else {
-                    setAuthOpen(true);
+                    navigate('/');
+                }
+            }
+        },
+        {
+            id: 'search',
+            label: 'Search',
+            icon: Search,
+            path: '/',
+            action: () => {
+                const wasOpen = isMobileSearchOpen;
+                closeAll();
+                if (!wasOpen) {
+                    setMobileSearchOpen(true);
+                    if (location.pathname !== '/') {
+                        navigate('/');
+                        setTimeout(() => {
+                            window.dispatchEvent(new Event('scrollToMainSearch'));
+                        }, 100);
+                    } else {
+                        window.dispatchEvent(new Event('scrollToMainSearch'));
+                    }
+                }
+            }
+        },
+        {
+            id: 'cart',
+            label: 'Cart',
+            icon: ShoppingBag,
+            path: '/',
+            action: () => {
+                const wasOpen = checkoutOpen;
+                closeAll();
+                if (!wasOpen) toggleCheckout(true);
+            },
+            badge: cartCount
+        },
+        {
+            id: 'wishlist',
+            label: 'Wishlist',
+            icon: Heart,
+            path: '/',
+            action: () => {
+                const wasOpen = isWishlistOpen;
+                closeAll();
+                if (!wasOpen) toggleWishlistSidebar();
+            },
+            badge: wishlistCount
+        },
+        {
+            id: 'profile',
+            label: 'Profile',
+            icon: User,
+            path: '/',
+            action: () => {
+                const wasOpen = isProfileOpen || isAuthOpen;
+                closeAll();
+                if (!wasOpen) {
+                    if (isAuthenticated) {
+                        setProfileOpen(true);
+                    } else {
+                        setAuthOpen(true);
+                    }
                 }
             }
         },
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden px-6 pb-8 pt-2 pointer-events-none">
+        <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden px-6 pb-4 pt-2 pointer-events-none mb-safe">
             <div className="max-w-md mx-auto pointer-events-auto">
                 <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-2xl border border-stone-100 dark:border-neutral-800 rounded-[2.5rem] shadow-2xl flex items-center justify-around p-3">
                     {navItems.map((item) => {
-                        const isActive = location.pathname === item.path && !item.action;
+                        const isSearchActive = item.id === 'search' && isMobileSearchOpen;
+                        const isCartActive = item.id === 'cart' && checkoutOpen;
+                        const isWishlistActive = item.id === 'wishlist' && isWishlistOpen;
+                        const isProfileActive = item.id === 'profile' && (isProfileOpen || isAuthOpen);
+                        const isHomeActive = item.id === 'home' && location.pathname === '/' && !isSearchActive && !isCartActive && !isWishlistActive && !isProfileActive;
+
+                        const isActive = isHomeActive || isSearchActive || isCartActive || isWishlistActive || isProfileActive;
                         const Icon = item.icon;
 
                         return (

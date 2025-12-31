@@ -253,13 +253,39 @@ router.patch('/:id', authenticateToken, upload.array('images', 10), async (req, 
     if (req.body.inStock !== undefined) updateData.inStock = req.body.inStock === 'true' || req.body.inStock === true;
     if (req.body.currency !== undefined) updateData.currency = req.body.currency;
 
-    // Handle image update
+    // Handle image update - merge existing with new uploads
+    const oldProduct = await Product.findById(req.params.id);
+    let finalImages = [];
+    
+    // Preserve existing images if provided
+    if (req.body.existingImages) {
+      try {
+        const existingImages = JSON.parse(req.body.existingImages);
+        if (Array.isArray(existingImages)) {
+          finalImages = [...existingImages];
+        }
+      } catch (e) {
+        console.error('Error parsing existingImages:', e);
+      }
+    } else if (oldProduct && oldProduct.images) {
+      // If no existingImages provided, keep all old images
+      finalImages = [...oldProduct.images];
+    }
+    
+    // Add new uploaded files
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      // Delete old image files if they are local uploads
-      const oldProduct = await Product.findById(req.params.id);
+      const newImageUrls = req.files.map(file => `/uploads/${file.filename}`);
+      finalImages = [...finalImages, ...newImageUrls];
+    }
+    
+    // Only update images if we have at least one
+    if (finalImages.length > 0) {
+      updateData.images = finalImages;
+      
+      // Delete old image files that are no longer in the list (if they were local uploads)
       if (oldProduct && oldProduct.images) {
         oldProduct.images.forEach(imgPath => {
-          if (imgPath.startsWith('/uploads/')) {
+          if (!finalImages.includes(imgPath) && imgPath.startsWith('/uploads/')) {
             const oldImagePath = path.join(__dirname, '..', imgPath);
             if (fs.existsSync(oldImagePath)) {
               fs.unlinkSync(oldImagePath);
@@ -267,13 +293,11 @@ router.patch('/:id', authenticateToken, upload.array('images', 10), async (req, 
           }
         });
       }
-      // Add new image URLs
-      updateData.images = req.files.map(file => `/uploads/${file.filename}`);
     } else if (req.body.images !== undefined) {
-      // Use provided image URLs (could be external or existing)
+      // Fallback: Use provided image URLs (could be external or existing)
       updateData.images = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
     }
-    // If no images provided, don't update the images field
+    // If no images provided at all, don't update the images field
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,

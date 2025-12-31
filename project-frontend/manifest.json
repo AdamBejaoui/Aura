@@ -1,11 +1,11 @@
 {
-  "name": "LuxeLayer",
-  "short_name": "LuxeLayer",
-  "description": "Premium clothing for the modern connoisseur.",
+  "name": "Aura",
+  "short_name": "Aura",
+  "description": "Luxury E-commerce for the modern connoisseur.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f4f1",
-  "theme_color": "#f6f4f1",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "/icon-192.png",

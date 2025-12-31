@@ -10,6 +10,7 @@ type WishlistStore = {
     toggleItem: (product: Product) => void;
     clearWishlist: () => void;
     toggleWishlist: () => void;
+    setWishlistOpen: (isOpen: boolean) => void;
 };
 
 export const useWishlistStore = create<WishlistStore>()(
@@ -20,7 +21,7 @@ export const useWishlistStore = create<WishlistStore>()(
             addItem: (product) => {
                 const { items } = get();
                 if (!items.find((i) => i.id === product.id)) {
-                    set({ items: [...items, product], isOpen: true });
+                    set({ items: [...items, product] });
                 }
             },
             removeItem: (productId) => {
@@ -32,11 +33,12 @@ export const useWishlistStore = create<WishlistStore>()(
                 if (exists) {
                     set({ items: items.filter((i) => i.id !== product.id) });
                 } else {
-                    set({ items: [...items, product], isOpen: true });
+                    set({ items: [...items, product] });
                 }
             },
             clearWishlist: () => set({ items: [] }),
             toggleWishlist: () => set({ isOpen: !get().isOpen }),
+            setWishlistOpen: (isOpen) => set({ isOpen }),
         }),
         {
             name: 'aura-wishlist',

@@ -59,16 +59,17 @@ const AppContent = () => {
   return (
     <>
       <ToastContainer
-        position="bottom-right"
+        position="top-right"
         theme={theme}
         autoClose={3000}
         hideProgressBar={false}
-        newestOnTop={false}
+        newestOnTop={true}
         closeOnClick
         rtl={false}
         pauseOnFocusLoss
         draggable
         pauseOnHover
+        style={{ top: '6.5rem' }}
       />
       <Routes>
         <Route path="/" element={<MainLayout><Home /></MainLayout>} />

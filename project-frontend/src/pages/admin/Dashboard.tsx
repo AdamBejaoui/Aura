@@ -63,6 +63,56 @@ const categories = [
     "Evening Luxe"
 ];
 
+// Product Image Carousel Component for admin inventory hover effect
+const ProductImageCarouselAdmin = ({ images, productName, getImageUrl }: { images: string[]; productName: string; getImageUrl: (path: string) => string }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isHovered, setIsHovered] = useState(false);
+    const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    React.useEffect(() => {
+        if (isHovered && images.length > 1) {
+            intervalRef.current = setInterval(() => {
+                setCurrentIndex((prev) => (prev + 1) % images.length);
+            }, 800); // Change image every 0.8 seconds
+        } else {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+            setCurrentIndex(0); // Reset to first image when not hovered
+        }
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, [isHovered, images.length]);
+
+    return (
+        <div
+            className="relative w-full h-full"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {images.map((image, index) => (
+                <img
+                    key={index}
+                    src={getImageUrl(image)}
+                    alt={`${productName} - Image ${index + 1}`}
+                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-[400ms] group-hover:scale-110 ${
+                        index === currentIndex
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 scale-105'
+                    }`}
+                    onError={(e) =>
+                        ((e.target as HTMLImageElement).src =
+                            "https://placehold.co/300x400/f8fafc/94a3b8?text=No+Image")
+                    }
+                />
+            ))}
+        </div>
+    );
+};
+
 const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
@@ -127,6 +177,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
     // Derived State (For Notification Badge)
     const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
@@ -202,17 +253,35 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const getImageUrl = (imagePath: string) => {
         if (!imagePath) return 'https://placehold.co/300x400/f8fafc/94a3b8?text=No+Image';
         if (imagePath.startsWith('http')) return imagePath;
-        return imagePath;
+        // Ensure /uploads paths are properly formatted (proxy handles routing in dev)
+        if (imagePath.startsWith('/uploads')) {
+            return imagePath;
+        }
+        if (imagePath.startsWith('uploads')) {
+            return `/${imagePath}`;
+        }
+        // For production or if backend is on different origin, use full URL
+        const baseUrl = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? '' : 'http://localhost:3000');
+        return baseUrl ? `${baseUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}` : imagePath;
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length > 0) {
-            const previews = files.map(file => URL.createObjectURL(file));
-            setImagePreviews(previews);
-        } else {
-            setImagePreviews([]);
+            const newPreviews = files.map(file => URL.createObjectURL(file));
+            // Store the files in state so they're available on submit
+            // Always append to existing images (both for new products and editing)
+            // This allows users to select multiple files at once or add them incrementally
+            setImagePreviews(prev => [...prev, ...newPreviews]);
+            setSelectedFiles(prev => [...prev, ...files]);
+            
+            // For new products, clear images array (will be populated from files on submit)
+            if (!isEditing) {
+                setNewProduct({ ...newProduct, images: [] });
+            }
         }
+        // Don't reset file input here - keep it so files are available on submit
+        // We'll reset it after successful submission
     };
 
     const executeProductAction = async () => {
@@ -228,15 +297,62 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             formData.append('inStock', String(newProduct.inStock));
             formData.append('currency', newProduct.currency);
 
-            const fileInput = fileInputRef.current;
-            if (fileInput && fileInput.files && fileInput.files.length > 0) {
-                Array.from(fileInput.files).forEach(file => {
+            let hasNewImages = false;
+            
+            // Use selectedFiles from state instead of fileInput.files
+            // This ensures files are available even if input was reset
+            if (selectedFiles.length > 0) {
+                // Append new uploaded files
+                selectedFiles.forEach(file => {
                     formData.append('images', file);
                 });
+                hasNewImages = true;
+            }
+            
+            // When editing, preserve existing images that weren't removed
+            if (isEditing && editingProduct) {
+                // Get existing images that are still in the preview
+                // imagePreviews contains both blob URLs (new) and regular paths (existing)
+                // newProduct.images contains the actual image paths
+                const existingImagePaths: string[] = [];
+                
+                // Check each existing image path to see if it's still in previews
+                // Since we now store paths in imagePreviews (not URLs), we can directly match
+                newProduct.images.forEach(imgPath => {
+                    // Skip if image path is empty
+                    if (!imgPath) return;
+                    
+                    // Check if this image path appears in the previews (not as a blob URL)
+                    const isStillInPreviews = imagePreviews.some(preview => {
+                        // If preview is a blob URL, it's a new image, skip
+                        if (preview.startsWith('blob:')) return false;
+                        // Direct path comparison since we store paths, not URLs
+                        return preview === imgPath;
+                    });
+                    
+                    if (isStillInPreviews) {
+                        existingImagePaths.push(imgPath);
+                    }
+                });
+                
+                if (existingImagePaths.length > 0) {
+                    // Send existing images as JSON array
+                    formData.append('existingImages', JSON.stringify(existingImagePaths));
+                }
+                
+                // If no new images and no existing images, show error
+                if (!hasNewImages && existingImagePaths.length === 0) {
+                    setError('At least one image is required');
+                    setIsAdding(false);
+                    return;
+                }
             } else if (!isEditing) {
-                setError('At least one image is required');
-                setIsAdding(false);
-                return;
+                // For new products, we must have selected files
+                if (selectedFiles.length === 0) {
+                    setError('At least one image is required');
+                    setIsAdding(false);
+                    return;
+                }
             }
 
             const config = {
@@ -247,7 +363,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
             if (isEditing && editingProduct) {
                 const response = await axios.patch(`/api/products/${editingProduct._id}`, formData, config);
-                setProducts(products.map(p => p._id === editingProduct._id ? response.data : p));
+                const updatedProduct = response.data;
+                // Update the products list with the response data (which includes updated images)
+                setProducts(products.map(p => p._id === editingProduct._id ? updatedProduct : p));
                 setEditingProduct(null);
                 setIsEditing(false);
                 toast.success('Product updated successfully');
@@ -259,7 +377,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
             setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [], inStock: true, currency: 'TND' });
             setImagePreviews([]);
-            if (fileInput) fileInput.value = '';
+            setSelectedFiles([]);
+            if (fileInputRef.current) fileInputRef.current.value = '';
             setIsAdding(false);
             setActiveSection('dashboard');
         } catch (err: any) {
@@ -295,16 +414,20 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
     const startEditing = (product: Product) => {
         setEditingProduct(product);
+        const productImages = product.images || [];
         setNewProduct({
             name: product.name,
             category: product.category,
             price: product.price,
             description: product.description,
-            images: product.images,
+            images: productImages, // Store actual image paths/URLs
             inStock: product.inStock,
             currency: product.currency,
         });
-        setImagePreviews(product.images.map(img => getImageUrl(img)));
+        // Store original image paths in previews (not URLs) so we can match them later
+        // We'll convert to URLs when displaying
+        setImagePreviews([...productImages]);
+        setSelectedFiles([]); // Clear any previously selected files
         setIsEditing(true);
         setActiveSection('addProduct');
         setError('');
@@ -314,6 +437,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         setEditingProduct(null);
         setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [], inStock: true, currency: 'TND' });
         setImagePreviews([]);
+        setSelectedFiles([]);
         setIsEditing(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         setError('');
@@ -768,36 +892,75 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                             <svg className="w-8 h-8 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         </div>
                                         <p className="text-sm font-bold text-gray-900 dark:text-white">Assets Upload</p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Select up to 5 high-quality images</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Click to select multiple images (up to 10) • First image will be primary</p>
                                     </div>
 
                                     {/* Image Grid Preview */}
                                     {imagePreviews.length > 0 && (
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
-                                            {imagePreviews.map((preview, index) => (
-                                                <div key={index} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-50 dark:bg-black border border-gray-100 dark:border-neutral-800">
-                                                    <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const newPreviews = [...imagePreviews];
-                                                            newPreviews.splice(index, 1);
-                                                            setImagePreviews(newPreviews);
-                                                            const newImages = [...newProduct.images];
-                                                            newImages.splice(index, 1);
-                                                            setNewProduct({ ...newProduct, images: newImages });
-                                                        }}
-                                                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                    </button>
-                                                    {index === 0 && (
-                                                        <div className="absolute bottom-0 inset-x-0 bg-stone-900/80 text-white text-[8px] font-black uppercase py-1 text-center backdrop-blur-sm">
-                                                            Primary
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                                                {imagePreviews.map((preview, index) => {
+                                                    const isExistingImage = typeof preview === 'string' && !preview.startsWith('blob:');
+                                                    const isNewUpload = preview.startsWith('blob:');
+                                                    // Convert to URL for display: if it's a blob URL, use it directly; otherwise use getImageUrl
+                                                    const previewUrl = isNewUpload ? preview : getImageUrl(preview);
+                                                    return (
+                                                        <div key={index} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-50 dark:bg-black border-2 border-gray-100 dark:border-neutral-800">
+                                                            <img 
+                                                                src={previewUrl} 
+                                                                alt={`Preview ${index + 1}`} 
+                                                                className="w-full h-full object-cover" 
+                                                            />
+                                                            {/* Remove button */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newPreviews = [...imagePreviews];
+                                                                    const removedPreview = newPreviews[index];
+                                                                    newPreviews.splice(index, 1);
+                                                                    setImagePreviews(newPreviews);
+                                                                    
+                                                                    // If it's an existing image (not a blob URL), remove from newProduct.images
+                                                                    // Since we now store paths in imagePreviews (not URLs), we can directly match
+                                                                    if (typeof removedPreview === 'string' && !removedPreview.startsWith('blob:')) {
+                                                                        // Remove the matching image path directly
+                                                                        const newImages = newProduct.images.filter(img => img !== removedPreview);
+                                                                        setNewProduct({ ...newProduct, images: newImages });
+                                                                    }
+                                                                }}
+                                                                className="absolute top-1 right-1 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+                                                                title="Remove image"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                            </button>
+                                                            {/* Badges */}
+                                                            <div className="absolute top-1 left-1 flex flex-col gap-1">
+                                                                {index === 0 && (
+                                                                    <span className="px-2 py-0.5 bg-stone-900/90 text-white text-[8px] font-black uppercase rounded backdrop-blur-sm shadow-lg">
+                                                                        Primary
+                                                                    </span>
+                                                                )}
+                                                                {isNewUpload && index !== 0 && (
+                                                                    <span className="px-2 py-0.5 bg-green-500/90 text-white text-[8px] font-black uppercase rounded backdrop-blur-sm">
+                                                                        New
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {/* Image number */}
+                                                            <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 text-white text-[8px] font-bold rounded backdrop-blur-sm">
+                                                                #{index + 1}
+                                                            </div>
+                                                            {/* Primary indicator border for first image */}
+                                                            {index === 0 && (
+                                                                <div className="absolute inset-0 border-2 border-stone-900 dark:border-white rounded-xl pointer-events-none"></div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                                {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} • Drag to reorder (coming soon) • First image is primary
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -1560,11 +1723,15 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         <div key={product._id} className="flex-shrink-0 w-[280px] sm:w-[320px] snap-start bg-white dark:bg-neutral-900 rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
                             <div className="h-72 bg-gray-100 dark:bg-neutral-800 relative overflow-hidden">
                                 {product.images.length > 0 ? (
-                                    <img
-                                        src={getImageUrl(product.images[0])}
-                                        alt={product.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                    />
+                                    product.images.length > 1 ? (
+                                        <ProductImageCarouselAdmin images={product.images} productName={product.name} getImageUrl={getImageUrl} />
+                                    ) : (
+                                        <img
+                                            src={getImageUrl(product.images[0])}
+                                            alt={product.name}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                    )
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-400">
                                         <span className="text-sm font-bold uppercase tracking-widest">No Assets</span>
@@ -1818,7 +1985,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 title={confirmation.title}
                 message={confirmation.message}
                 isDestructive={confirmation.isDestructive}
-                confirmText={confirmation.type === 'logout' ? 'Logout' : 'Delete'}
+                confirmText={
+                    confirmation.type === 'logout' ? 'Logout' :
+                    confirmation.type === 'editProduct' ? 'Update' :
+                    confirmation.type === 'addProduct' ? 'Add' :
+                    'Delete'
+                }
             />
         </div>
     );

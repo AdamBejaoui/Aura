@@ -22,10 +22,16 @@ textarea:focus-visible {
 }
 
 body {
-  overscroll-behavior-y: none;
-  user-select: none;
-  /* Disable text selection for app-like feel */
-  -webkit-user-select: none;
+  /* standard body styles */
+}
+
+/* Mobile App Specific Locks */
+@media (max-width: 768px) {
+  body {
+    overscroll-behavior-y: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
 }
 
 /* Allow selection in inputs */
@@ -75,6 +81,35 @@ textarea {
   .shadow-premium {
     --shadow-color: rgba(0, 0, 0, 0.03);
     box-shadow: 0 10px 40px -10px var(--shadow-color), 0 5px 20px -15px var(--shadow-color);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .p-safe {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .mt-safe {
+    margin-top: env(safe-area-inset-top);
+  }
+
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bg-luxury-gradient {
+    @apply bg-gradient-to-br from-stone-50 via-white to-stone-100 dark:from-neutral-950 dark:via-black dark:to-neutral-900;
   }
 }
 

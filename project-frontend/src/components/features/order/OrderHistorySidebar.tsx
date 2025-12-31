@@ -82,8 +82,8 @@ const OrderHistorySidebar = ({ isOpen, onClose }: OrderHistorySidebarProps) => {
                 initial={{ x: '100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
-                transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-                className="relative w-full max-w-md bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 rounded-l-[3rem] p-8 md:p-10 overflow-hidden"
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="relative w-full max-w-md bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 md:rounded-l-[3rem] p-8 md:p-10 pt-safe overflow-hidden"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-12">
@@ -169,6 +169,7 @@ const OrderHistorySidebar = ({ isOpen, onClose }: OrderHistorySidebarProps) => {
                             })}
                         </div>
                     )}
+                    <div className="h-32 lg:hidden" aria-hidden="true" />
                 </div>
 
                 <div className="pt-10">

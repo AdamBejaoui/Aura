@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#F6F4F1" />
+  <meta name="theme-color" content="#ffffff" />
   <meta name="format-detection" content="telephone=no" />
   <meta name="apple-mobile-web-app-title" content="Aura" />
   <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -16,12 +16,21 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap"
     rel="stylesheet">
   <link rel="manifest" href="/manifest.json" />
-  <title>LuxeLayer</title>
+  <title>Aura</title>
 </head>
 
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registered'))
+          .catch(err => console.log('SW registration failed', err));
+      });
+    }
+  </script>
 </body>
 
 </html>
