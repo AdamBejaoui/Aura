@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, ShoppingBag, Loader2, Save, Key, Mail, MapPin, Phone, Camera, Shield, LogOut, X } from 'lucide-react';
+import { User, ShoppingBag, Loader2, Save, Key, Mail, MapPin, Phone, Camera, LogOut, X } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type AccountSidebarProps = {
@@ -22,6 +22,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
         email: user?.email || '',
         phone: user?.phone || '',
         address: user?.address || '',
+        avatar: user?.avatar || '',
     });
 
     const [passwordData, setPasswordData] = useState({
@@ -37,6 +38,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                 email: user.email || '',
                 phone: user.phone || '',
                 address: user.address || '',
+                avatar: user.avatar || '',
             });
         }
     }, [user]);
@@ -49,6 +51,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                 name: formData.name,
                 phone: formData.phone,
                 address: formData.address,
+                avatar: formData.avatar,
             });
             const token = useAuthStore.getState().token;
             if (token) {
@@ -59,6 +62,21 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
             toast.error(error.response?.data?.message || 'SYNCHRONIZATION FAILED');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 500000) { // 500KB limit
+                toast.error('IMAGE TOO LARGE: MAX 500KB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData({ ...formData, avatar: reader.result as string });
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -102,10 +120,10 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-                className="relative w-full max-w-md bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 md:rounded-l-[3rem] p-8 md:p-10 pt-safe overflow-hidden"
+                className="relative w-full max-w-md md:max-w-2xl bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 md:rounded-l-[3rem] pt-safe overflow-hidden"
             >
                 {/* Header Section */}
-                <div className="flex items-center justify-between border-b border-stone-100 dark:border-neutral-800 pb-8">
+                <div className="flex items-center justify-between border-b border-stone-100 dark:border-neutral-800 p-6 md:p-8">
                     <div className="flex items-center gap-4">
                         <div className="p-2.5 bg-stone-50 dark:bg-neutral-800 rounded-2xl border border-stone-100 dark:border-neutral-800">
                             <User className="w-5 h-5 text-stone-900 dark:text-white" />
@@ -124,7 +142,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="px-8 md:px-10 pt-8 flex gap-2">
+                <div className="px-6 md:px-8 pt-6 flex gap-2">
                     <button
                         onClick={() => setActiveTab('info')}
                         className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'info'
@@ -155,7 +173,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto no-scrollbar p-8 md:p-10 pt-4">
+                <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-8 pt-4">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeTab}
@@ -169,15 +187,20 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                     <div className="flex flex-col items-center mb-6 group">
                                         <div className="relative p-1 bg-gradient-to-tr from-stone-200 to-stone-400 dark:from-neutral-800 dark:to-neutral-600 rounded-[2.5rem]">
                                             <div className="w-20 h-20 bg-stone-50 dark:bg-neutral-950 rounded-[2.3rem] flex items-center justify-center relative overflow-hidden">
-                                                <span className="text-2xl font-black text-stone-900 dark:text-white">{user?.name?.charAt(0).toUpperCase()}</span>
-                                                <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
+                                                {formData.avatar ? (
+                                                    <img src={formData.avatar} alt="Profile" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-2xl font-black text-stone-900 dark:text-white">{user?.name?.charAt(0).toUpperCase()}</span>
+                                                )}
+                                                <label className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
                                                     <Camera className="w-5 h-5 text-white" />
-                                                </div>
+                                                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Identity</label>
                                             <div className="relative group">
@@ -186,20 +209,20 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                                     type="text"
                                                     value={formData.name}
                                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Archives (Email)</label>
+                                            <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Archives</label>
                                             <div className="relative">
                                                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
                                                 <input
                                                     type="email"
                                                     value={formData.email}
                                                     disabled
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-100/50 dark:bg-neutral-950 text-stone-400 cursor-not-allowed text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-100/50 dark:bg-neutral-950 text-stone-400 cursor-not-allowed text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
@@ -212,7 +235,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                                     type="tel"
                                                     value={formData.phone}
                                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
@@ -220,12 +243,12 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Anchor (Address)</label>
                                             <div className="relative group">
-                                                <MapPin className="absolute left-5 top-5 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
-                                                <textarea
-                                                    rows={2}
+                                                <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
+                                                <input
+                                                    type="text"
                                                     value={formData.address}
                                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all resize-none text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
@@ -242,7 +265,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                 </form>
                             ) : (
                                 <form onSubmit={handleChangePassword} className="space-y-6">
-                                    <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Current Key</label>
                                             <div className="relative group">
@@ -252,7 +275,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                                     required
                                                     value={passwordData.currentPassword}
                                                     onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
@@ -266,12 +289,12 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                                     required
                                                     value={passwordData.newPassword}
                                                     onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 md:col-span-2">
                                             <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest pl-1">Confirm Layer</label>
                                             <div className="relative group">
                                                 <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 group-focus-within:text-stone-900 dark:group-focus-within:text-white transition-colors" />
@@ -280,7 +303,7 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                                                     required
                                                     value={passwordData.confirmPassword}
                                                     onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                                    className="w-full pl-14 pr-6 py-3.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
+                                                    className="w-full pl-14 pr-6 py-2.5 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-950 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all text-[12px] font-bold tracking-tight"
                                                 />
                                             </div>
                                         </div>
@@ -301,21 +324,17 @@ const AccountSidebar = ({ isOpen, onClose }: AccountSidebarProps) => {
                 </div>
 
                 {/* Secure Badge Bottom */}
-                <div className="p-8 md:p-10 pb-28 md:pb-12 flex flex-col items-center gap-4 bg-stone-50/50 dark:bg-black/20 border-t border-stone-100 dark:border-neutral-800 mt-auto">
+                <div className="p-6 md:p-8 flex flex-col items-center gap-4 bg-stone-50/50 dark:bg-black/20 border-t border-stone-100 dark:border-neutral-800 mt-auto">
                     <button
                         onClick={() => {
                             logout();
                             onClose();
                         }}
-                        className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 hover:text-rose-600 transition-all"
+                        className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 hover:text-rose-600 transition-all active:scale-95"
                     >
                         <LogOut className="w-4 h-4" />
                         Terminate Link
                     </button>
-                    <div className="flex items-center gap-2 opacity-20">
-                        <Shield className="w-3 h-3" />
-                        <span className="text-[8px] font-black uppercase tracking-[0.5em]">End-to-End Secure</span>
-                    </div>
                 </div>
             </motion.div>
         </div>

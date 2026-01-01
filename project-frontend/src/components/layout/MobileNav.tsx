@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, ShoppingBag, Heart, User } from 'lucide-react';
+import { Home, Search, ShoppingBag, Heart, Package } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../store/cartStore';
@@ -13,7 +13,12 @@ const MobileNav: React.FC = () => {
     const { isMobileSearchOpen, setMobileSearchOpen } = useUIStore();
     const { items: cartItems, checkoutOpen, toggleCheckout } = useCartStore();
     const { items: wishlistItems, isOpen: isWishlistOpen, toggleWishlist: toggleWishlistSidebar } = useWishlistStore();
-    const { isAuthenticated, isProfileOpen, setProfileOpen, isAuthOpen, setAuthOpen } = useAuthStore();
+    const { isOrdersOpen, setOrdersOpen, setProfileOpen, setAuthOpen, isProfileOpen } = useAuthStore();
+
+    // Close all sidebars when location changes
+    React.useEffect(() => {
+        closeAll();
+    }, [location.pathname]);
 
     const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
     const wishlistCount = wishlistItems.length;
@@ -24,6 +29,7 @@ const MobileNav: React.FC = () => {
         if (isWishlistOpen) toggleWishlistSidebar();
         setProfileOpen(false);
         setAuthOpen(false);
+        setOrdersOpen(false);
     };
 
     const navItems = [
@@ -47,18 +53,14 @@ const MobileNav: React.FC = () => {
             icon: Search,
             path: '/',
             action: () => {
-                const wasOpen = isMobileSearchOpen;
                 closeAll();
-                if (!wasOpen) {
-                    setMobileSearchOpen(true);
-                    if (location.pathname !== '/') {
-                        navigate('/');
-                        setTimeout(() => {
-                            window.dispatchEvent(new Event('scrollToMainSearch'));
-                        }, 100);
-                    } else {
+                if (location.pathname !== '/') {
+                    navigate('/');
+                    setTimeout(() => {
                         window.dispatchEvent(new Event('scrollToMainSearch'));
-                    }
+                    }, 100);
+                } else {
+                    window.dispatchEvent(new Event('scrollToMainSearch'));
                 }
             }
         },
@@ -87,23 +89,19 @@ const MobileNav: React.FC = () => {
             badge: wishlistCount
         },
         {
-            id: 'profile',
-            label: 'Profile',
-            icon: User,
+            id: 'orders',
+            label: 'Orders',
+            icon: Package,
             path: '/',
             action: () => {
-                const wasOpen = isProfileOpen || isAuthOpen;
+                const wasOpen = isOrdersOpen; // Use actual state for orders if available
                 closeAll();
-                if (!wasOpen) {
-                    if (isAuthenticated) {
-                        setProfileOpen(true);
-                    } else {
-                        setAuthOpen(true);
-                    }
-                }
+                if (!wasOpen) setOrdersOpen(true);
             }
         },
     ];
+
+    if (isProfileOpen) return null;
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden px-6 pb-4 pt-2 pointer-events-none mb-safe">
@@ -113,10 +111,10 @@ const MobileNav: React.FC = () => {
                         const isSearchActive = item.id === 'search' && isMobileSearchOpen;
                         const isCartActive = item.id === 'cart' && checkoutOpen;
                         const isWishlistActive = item.id === 'wishlist' && isWishlistOpen;
-                        const isProfileActive = item.id === 'profile' && (isProfileOpen || isAuthOpen);
-                        const isHomeActive = item.id === 'home' && location.pathname === '/' && !isSearchActive && !isCartActive && !isWishlistActive && !isProfileActive;
+                        const isOrdersActive = item.id === 'orders' && isOrdersOpen;
+                        const isHomeActive = item.id === 'home' && location.pathname === '/' && !isSearchActive && !isCartActive && !isWishlistActive && !isOrdersActive;
 
-                        const isActive = isHomeActive || isSearchActive || isCartActive || isWishlistActive || isProfileActive;
+                        const isActive = isHomeActive || isSearchActive || isCartActive || isWishlistActive || isOrdersActive;
                         const Icon = item.icon;
 
                         return (

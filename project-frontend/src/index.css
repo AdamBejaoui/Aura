@@ -66,6 +66,36 @@ textarea {
   .text-aura-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-br from-stone-900 via-stone-800 to-stone-600 dark:from-white dark:via-stone-200 dark:to-stone-400;
   }
+
+  .aura-dropdown {
+    @apply absolute hidden group-hover:block transition-all duration-300 z-50;
+  }
+
+  .aura-dropdown-content {
+    @apply bg-white dark:bg-neutral-900 rounded-[2rem] shadow-2xl border border-stone-100 dark:border-neutral-800 overflow-hidden p-2 min-w-[180px];
+    animation: aura-dropdown-in 0.2s ease-out;
+  }
+
+  @keyframes aura-dropdown-in {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .aura-dropdown-item {
+    @apply w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-stone-500 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-neutral-800 rounded-xl flex items-center gap-3 transition-all duration-300;
+  }
+
+  /* Premium Select Styling */
+  .aura-select {
+    @apply px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl bg-stone-50/50 dark:bg-neutral-800/50 border border-stone-100 dark:border-neutral-800 focus:ring-0 focus:border-stone-900 dark:focus:border-white transition-all cursor-pointer outline-none;
+  }
 }
 
 @layer utilities {
@@ -113,47 +143,35 @@ textarea {
   }
 }
 
-
-/* Toastify Customization */
-.Toastify__toast-container {
-  width: min(90vw, 400px);
+/* Sonner Customization - Aura Luxury Collective */
+[data-sonner-toaster] {
+  font-family: inherit;
 }
 
-.Toastify__toast {
-  @apply rounded-[1.5rem] border border-stone-100 dark:border-neutral-800 backdrop-blur-xl p-6 overflow-hidden !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+[data-sonner-toast] {
+  @apply rounded-2xl border border-stone-200 dark:border-neutral-800 bg-white dark:bg-black shadow-2xl !important;
 }
 
-.Toastify__toast-body {
-  @apply m-0 p-0 font-black uppercase tracking-tighter text-[10px] !important;
+[data-sonner-toast] [data-title] {
+  @apply font-black uppercase tracking-wider text-[10px] text-stone-900 dark:text-white !important;
 }
 
-.Toastify__toast-icon {
-  @apply w-4 h-4 mr-4 !important;
+[data-sonner-toast] [data-description] {
+  @apply font-medium text-xs text-stone-500 dark:text-stone-400 !important;
 }
 
-.Toastify__toast--success {
-  @apply bg-white/90 dark:bg-neutral-900/90 text-stone-900 dark:text-white !important;
-  --toastify-icon-color-success: currentColor;
+[data-sonner-toast][data-type="success"] {
+  @apply border-stone-200 dark:border-neutral-800 !important;
 }
 
-.Toastify__toast--error {
-  @apply bg-rose-50/90 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/20 !important;
-  --toastify-icon-color-error: currentColor;
+[data-sonner-toast][data-type="error"] {
+  @apply border-rose-100 dark:border-rose-900/30 bg-rose-50/50 dark:bg-rose-950/10 !important;
 }
 
-.Toastify__progress-bar {
-  @apply h-1 rounded-b-[1.5rem] !important;
+[data-sonner-toast][data-type="error"] [data-title] {
+  @apply text-rose-600 dark:text-rose-400 !important;
 }
 
-.Toastify__progress-bar--success {
-  @apply bg-stone-900 dark:bg-white !important;
-}
-
-.Toastify__progress-bar--error {
-  @apply bg-rose-500 !important;
-}
-
-.Toastify__close-button {
-  @apply text-stone-400 hover:text-stone-900 dark:hover:text-white transition-colors opacity-100 !important;
+[data-sonner-toast] svg {
+  @apply w-4 h-4 !important;
 }

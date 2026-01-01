@@ -9,6 +9,7 @@ type User = {
     role: 'customer' | 'admin' | 'co-admin';
     phone?: string;
     address?: string;
+    avatar?: string;
 };
 
 type AuthState = {

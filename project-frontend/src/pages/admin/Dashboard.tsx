@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Plasma from "../../components/ui/Plasma";
 import ConfirmationModal from "../../components/common/ConfirmationModal";
-import { toast } from 'react-toastify';
+import OrderDetailsModal from "../../components/admin/OrderDetailsModal";
+import { toast } from 'sonner';
 import { useAuthStore } from "../../store/authStore";
 import { useThemeStore } from "../../store/themeStore";
 import {
@@ -18,9 +19,25 @@ import {
     Moon,
     Clock,
     TrendingUp,
-    ArrowUpRight
+    ArrowUpRight,
+    ShieldCheck,
+    Truck,
+    Box,
+    XCircle,
+    HelpCircle,
+    Gem,
+    Star,
+    ShoppingCart,
+    Eye,
+    RefreshCcw,
+    Shield,
+    User,
+    ShieldAlert,
+    Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import AccountSidebar from "../../components/features/auth/AccountSidebar";
+import LoadingScreen from "../../components/common/LoadingScreen";
 
 // --- Interfaces ---
 interface Product {
@@ -41,12 +58,14 @@ interface OrderItem {
 interface Order {
     _id: string;
     fullName: string;
+    email?: string;
     phone: string;
     address: string;
     size: string;
     items: OrderItem[];
     total: number;
     status: string;
+    paymentMethod?: string;
     createdAt: string;
 }
 interface AdminDashboardProps {
@@ -98,14 +117,13 @@ const ProductImageCarouselAdmin = ({ images, productName, getImageUrl }: { image
                     key={index}
                     src={getImageUrl(image)}
                     alt={`${productName} - Image ${index + 1}`}
-                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-[400ms] group-hover:scale-110 ${
-                        index === currentIndex
-                            ? 'opacity-100 scale-100'
-                            : 'opacity-0 scale-105'
-                    }`}
+                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-[400ms] group-hover:scale-110 ${index === currentIndex
+                        ? 'opacity-100 scale-100'
+                        : 'opacity-0 scale-105'
+                        }`}
                     onError={(e) =>
-                        ((e.target as HTMLImageElement).src =
-                            "https://placehold.co/300x400/f8fafc/94a3b8?text=No+Image")
+                    ((e.target as HTMLImageElement).src =
+                        "https://placehold.co/300x400/f8fafc/94a3b8?text=No+Image")
                     }
                 />
             ))}
@@ -115,7 +133,7 @@ const ProductImageCarouselAdmin = ({ images, productName, getImageUrl }: { image
 
 const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const navigate = useNavigate();
-    const { user } = useAuthStore();
+    const { user, isProfileOpen, setProfileOpen } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const isDark = theme === 'dark';
 
@@ -149,8 +167,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
     const [activeSection, setActiveSection] = useState<'dashboard' | 'addProduct' | 'orders' | 'users' | 'reviews'>('dashboard');
     const [users, setUsers] = useState<any[]>([]);
+    const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
     const [reviews, setReviews] = useState<any[]>([]);
     const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
+    const [stats, setStats] = useState<any>(null);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
     // Confirmation Modal State
     const [confirmation, setConfirmation] = useState<{
@@ -171,10 +193,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     // Filters & Theme
     const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'>('all');
     const [orderSortMode, setOrderSortMode] = useState<'newest' | 'status'>('newest');
-    const [adminEmail, setAdminEmail] = useState(() => {
-        if (typeof window === 'undefined') return 'abejaoui90@gmail.com';
-        return window.localStorage?.getItem('adminEmail') || 'abejaoui90@gmail.com';
-    });
+
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -189,11 +208,23 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         }
     };
 
-    // --- Effects ---
+
+
+    // Click outside to close dropdowns
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        setAdminEmail(window.localStorage?.getItem('adminEmail') || 'Admin');
-    }, [token]);
+        const handleClickOutside = (e: MouseEvent) => {
+            if (!activeDropdownId) return;
+
+            const target = e.target as HTMLElement;
+            // If click is not inside a dropdown AND not on a toggle button, close it
+            if (!target.closest('.aura-dropdown') && !target.closest('.aura-dropdown-toggle')) {
+                setActiveDropdownId(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [activeDropdownId]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -227,6 +258,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     ]);
                     setProducts(productsRes.data);
                     setOrders(ordersRes.data);
+
+                    // Fetch stats if in dashboard section
+                    if (activeSection === 'dashboard') {
+                        const statsRes = await axios.get('/api/admin/stats', authHeader);
+                        setStats(statsRes.data);
+                    }
                 }
 
                 setError('');
@@ -274,7 +311,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             // This allows users to select multiple files at once or add them incrementally
             setImagePreviews(prev => [...prev, ...newPreviews]);
             setSelectedFiles(prev => [...prev, ...files]);
-            
+
             // For new products, clear images array (will be populated from files on submit)
             if (!isEditing) {
                 setNewProduct({ ...newProduct, images: [] });
@@ -298,7 +335,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             formData.append('currency', newProduct.currency);
 
             let hasNewImages = false;
-            
+
             // Use selectedFiles from state instead of fileInput.files
             // This ensures files are available even if input was reset
             if (selectedFiles.length > 0) {
@@ -308,20 +345,20 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 });
                 hasNewImages = true;
             }
-            
+
             // When editing, preserve existing images that weren't removed
             if (isEditing && editingProduct) {
                 // Get existing images that are still in the preview
                 // imagePreviews contains both blob URLs (new) and regular paths (existing)
                 // newProduct.images contains the actual image paths
                 const existingImagePaths: string[] = [];
-                
+
                 // Check each existing image path to see if it's still in previews
                 // Since we now store paths in imagePreviews (not URLs), we can directly match
                 newProduct.images.forEach(imgPath => {
                     // Skip if image path is empty
                     if (!imgPath) return;
-                    
+
                     // Check if this image path appears in the previews (not as a blob URL)
                     const isStillInPreviews = imagePreviews.some(preview => {
                         // If preview is a blob URL, it's a new image, skip
@@ -329,17 +366,17 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         // Direct path comparison since we store paths, not URLs
                         return preview === imgPath;
                     });
-                    
+
                     if (isStillInPreviews) {
                         existingImagePaths.push(imgPath);
                     }
                 });
-                
+
                 if (existingImagePaths.length > 0) {
                     // Send existing images as JSON array
                     formData.append('existingImages', JSON.stringify(existingImagePaths));
                 }
-                
+
                 // If no new images and no existing images, show error
                 if (!hasNewImages && existingImagePaths.length === 0) {
                     setError('At least one image is required');
@@ -469,6 +506,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         try {
             const response = await axios.patch(`/api/orders/${orderId}/status`, { status }, authHeader);
             setOrders(orders.map(order => order._id === orderId ? response.data : order));
+            setActiveDropdownId(null); // Close dropdown on success
         } catch (err: any) {
             setError('Failed to update order status');
         }
@@ -498,17 +536,31 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const getStatusConfig = (status: string) => {
         switch (status) {
             case 'pending':
-                return { bg: 'bg-amber-100 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400', icon: '⏳' };
+                return { bg: 'bg-amber-100 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400', icon: <Clock className="w-4 h-4" /> };
             case 'confirmed':
-                return { bg: 'bg-stone-100 dark:bg-neutral-900/20', text: 'text-stone-700 dark:text-stone-400', icon: '✅' };
+                return { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', icon: <ShieldCheck className="w-4 h-4" /> };
             case 'shipped':
-                return { bg: 'bg-stone-100 dark:bg-neutral-900/20', text: 'text-stone-700 dark:text-stone-400', icon: '🚚' };
+                return { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400', icon: <Truck className="w-4 h-4" /> };
             case 'delivered':
-                return { bg: 'bg-stone-100 dark:bg-neutral-900/20', text: 'text-stone-700 dark:text-stone-400', icon: '📦' };
+                return { bg: 'bg-emerald-100 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-400', icon: <Box className="w-4 h-4" /> };
             case 'cancelled':
-                return { bg: 'bg-stone-100 dark:bg-neutral-900/20', text: 'text-stone-700 dark:text-stone-400', icon: '❌' };
+                return { bg: 'bg-rose-100 dark:bg-rose-900/20', text: 'text-rose-700 dark:text-rose-400', icon: <XCircle className="w-4 h-4" /> };
             default:
-                return { bg: 'bg-gray-100 dark:bg-neutral-900/20', text: 'text-gray-700 dark:text-gray-400', icon: '❓' };
+                return { bg: 'bg-gray-100 dark:bg-neutral-900/20', text: 'text-gray-700 dark:text-gray-400', icon: <HelpCircle className="w-4 h-4" /> };
+        }
+    };
+
+    const getRoleConfig = (role: string) => {
+        switch (role) {
+            case 'admin':
+                return { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400', icon: <ShieldAlert className="w-3 h-3" /> };
+            case 'co-admin':
+                return { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', icon: <Shield className="w-3 h-3" /> };
+            case 'customer':
+            case 'user':
+                return { bg: 'bg-stone-100 dark:bg-neutral-800', text: 'text-stone-700 dark:text-stone-400', icon: <User className="w-3 h-3" /> };
+            default:
+                return { bg: 'bg-gray-100 dark:bg-neutral-800', text: 'text-gray-700 dark:text-gray-400', icon: <HelpCircle className="w-3 h-3" /> };
         }
     };
 
@@ -585,19 +637,26 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     // Dashboard Stats Components
     // Dashboard Stats Components
     const DashboardStats = () => {
-        const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-        const totalOrders = orders.length;
-        const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
-        const deliveredOrdersCount = orders.filter(o => o.status === 'delivered').length;
-        const totalUsers = users.length;
+        if (!stats) return (
+            <div className="flex items-center justify-center p-12">
+                <RefreshCcw className="w-8 h-8 animate-spin text-stone-400" />
+            </div>
+        );
+
+        const totalRevenue = stats.totalRevenue || 0;
+        const totalOrders = stats.totalOrders || 0;
+        const pendingOrdersCount = stats.pendingOrdersCount || 0;
+        const deliveredOrdersCount = stats.deliveredOrdersCount || 0;
+        const totalUsers = stats.totalUsers || 0;
+        const totalReviews = stats.totalReviews || 0;
 
         // Calculate percentages for comparison
         const totalOrderPercentage = totalOrders > 0 ? ((pendingOrdersCount / totalOrders) * 100).toFixed(1) : "0";
         const deliveredPercentage = totalOrders > 0 ? ((deliveredOrdersCount / totalOrders) * 100).toFixed(1) : "0";
 
-        // Calculate month-over-month change
-        const lastMonthRevenue = totalRevenue * 0.88;
-        const monthOverMonthChange = ((totalRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1);
+        // Month-over-month change from backend
+        const monthOverMonthChange = stats.monthOverMonthChange || "0";
+        const isPositive = parseFloat(monthOverMonthChange) >= 0;
 
         return (
             <div className="space-y-6 mb-8">
@@ -615,9 +674,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                     <div className="text-4xl sm:text-5xl font-bold tracking-tight">${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <div className="flex items-center gap-1.5 text-green-400 dark:text-green-600 bg-white/10 dark:bg-black/5 px-2 py-1 rounded-full text-xs font-bold">
-                                        <TrendingUp className="w-3.5 h-3.5" />
-                                        +{monthOverMonthChange}%
+                                    <div className={`flex items-center gap-1.5 ${isPositive ? 'text-green-400 dark:text-green-600' : 'text-red-400 dark:text-red-600'} bg-white/10 dark:bg-black/5 px-2 py-1 rounded-full text-xs font-bold`}>
+                                        <TrendingUp className={`w-3.5 h-3.5 ${!isPositive && 'rotate-180'}`} />
+                                        {isPositive ? '+' : ''}{monthOverMonthChange}%
                                     </div>
                                     <p className="text-[10px] text-white/40 dark:text-black/40 mt-1 uppercase tracking-widest font-bold">vs last month</p>
                                 </div>
@@ -695,14 +754,14 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 {/* Quick Metric Tiles */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
                     {[
-                        { label: 'Avg Order', value: `$${(totalRevenue / (totalOrders || 1)).toFixed(0)}`, icon: '💎', color: 'bg-stone-50 text-stone-900' },
-                        { label: 'Reviews', value: '12', icon: '⭐️', color: 'bg-stone-50 text-stone-900' },
-                        { label: 'Waitlist', value: '48', icon: '⏳', color: 'bg-stone-50 text-stone-900' },
-                        { label: 'Abandoned', value: '24', icon: '🛒', color: 'bg-stone-50 text-stone-900' },
-                        { label: 'Visits', value: '8.4k', icon: '👁️', color: 'bg-stone-50 text-stone-900' },
+                        { label: 'Avg Order', value: `$${stats.avgOrderValue?.toFixed(0) || 0}`, icon: <Gem className="w-5 h-5" />, color: 'bg-stone-50 text-stone-900' },
+                        { label: 'Reviews', value: totalReviews.toString(), icon: <Star className="w-5 h-5" />, color: 'bg-stone-50 text-stone-900' },
+                        { label: 'Waitlist', value: '48', icon: <Clock className="w-5 h-5" />, color: 'bg-stone-50 text-stone-900' },
+                        { label: 'Abandoned', value: '24', icon: <ShoppingCart className="w-5 h-5" />, color: 'bg-stone-50 text-stone-900' },
+                        { label: 'Visits', value: '8.4k', icon: <Eye className="w-5 h-5" />, color: 'bg-stone-50 text-stone-900' },
                     ].map((tile, i) => (
                         <div key={i} className="bg-white dark:bg-neutral-900 p-4 sm:p-5 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm flex items-center gap-4 hover:shadow-md transition-all group cursor-pointer">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gray-50 dark:bg-neutral-800 flex items-center justify-center text-lg sm:text-xl group-hover:bg-stone-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-all">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gray-50 dark:bg-neutral-800 flex items-center justify-center text-gray-400 group-hover:bg-stone-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-all">
                                 {tile.icon}
                             </div>
                             <div className="min-w-0">
@@ -793,18 +852,34 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
                                             <div className="relative">
-                                                <select
-                                                    value={newProduct.category}
-                                                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none appearance-none transition-all"
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveDropdownId(activeDropdownId === 'category' ? null : 'category')}
+                                                    className="aura-dropdown-toggle w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl flex items-center justify-between focus:ring-2 focus:ring-stone-500/20 outline-none transition-all group"
                                                 >
-                                                    {categories.map(cat => (
-                                                        <option key={cat} value={cat}>{cat}</option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </div>
+                                                    <span className="text-sm font-bold uppercase tracking-widest">{newProduct.category}</span>
+                                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'category' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </button>
+
+                                                {activeDropdownId === 'category' && (
+                                                    <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
+                                                        <div className="aura-dropdown-content">
+                                                            {categories.map(cat => (
+                                                                <button
+                                                                    key={cat}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setNewProduct({ ...newProduct, category: cat });
+                                                                        setActiveDropdownId(null);
+                                                                    }}
+                                                                    className={`aura-dropdown-item w-full ${newProduct.category === cat ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                >
+                                                                    {cat}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div>
@@ -825,20 +900,40 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency</label>
                                             <div className="relative">
-                                                <select
-                                                    value={newProduct.currency}
-                                                    onChange={(e) => setNewProduct({ ...newProduct, currency: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none appearance-none transition-all"
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveDropdownId(activeDropdownId === 'currency' ? null : 'currency')}
+                                                    className="aura-dropdown-toggle w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl flex items-center justify-between focus:ring-2 focus:ring-stone-500/20 outline-none transition-all group"
                                                 >
-                                                    <option value="USD">USD ($)</option>
-                                                    <option value="EUR">EUR (€)</option>
-                                                    <option value="GBP">GBP (£)</option>
-                                                    <option value="JPY">JPY (¥)</option>
-                                                    <option value="TND">TND (DT)</option>
-                                                </select>
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </div>
+                                                    <span className="text-sm font-bold uppercase tracking-widest">{newProduct.currency}</span>
+                                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'currency' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </button>
+
+                                                {activeDropdownId === 'currency' && (
+                                                    <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
+                                                        <div className="aura-dropdown-content">
+                                                            {[
+                                                                { code: 'USD', symbol: '$' },
+                                                                { code: 'EUR', symbol: '€' },
+                                                                { code: 'GBP', symbol: '£' },
+                                                                { code: 'JPY', symbol: '¥' },
+                                                                { code: 'TND', symbol: 'DT' }
+                                                            ].map(curr => (
+                                                                <button
+                                                                    key={curr.code}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setNewProduct({ ...newProduct, currency: curr.code });
+                                                                        setActiveDropdownId(null);
+                                                                    }}
+                                                                    className={`aura-dropdown-item w-full ${newProduct.currency === curr.code ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                >
+                                                                    {curr.code} ({curr.symbol})
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div>
@@ -900,16 +995,15 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
                                                 {imagePreviews.map((preview, index) => {
-                                                    const isExistingImage = typeof preview === 'string' && !preview.startsWith('blob:');
                                                     const isNewUpload = preview.startsWith('blob:');
                                                     // Convert to URL for display: if it's a blob URL, use it directly; otherwise use getImageUrl
                                                     const previewUrl = isNewUpload ? preview : getImageUrl(preview);
                                                     return (
                                                         <div key={index} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-50 dark:bg-black border-2 border-gray-100 dark:border-neutral-800">
-                                                            <img 
-                                                                src={previewUrl} 
-                                                                alt={`Preview ${index + 1}`} 
-                                                                className="w-full h-full object-cover" 
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`Preview ${index + 1}`}
+                                                                className="w-full h-full object-cover"
                                                             />
                                                             {/* Remove button */}
                                                             <button
@@ -919,7 +1013,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                                     const removedPreview = newPreviews[index];
                                                                     newPreviews.splice(index, 1);
                                                                     setImagePreviews(newPreviews);
-                                                                    
+
                                                                     // If it's an existing image (not a blob URL), remove from newProduct.images
                                                                     // Since we now store paths in imagePreviews (not URLs), we can directly match
                                                                     if (typeof removedPreview === 'string' && !removedPreview.startsWith('blob:')) {
@@ -1048,7 +1142,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             return (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Standardized Header */}
-                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8 bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8 bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm relative z-10">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">Order Management</h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -1057,34 +1151,57 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </div>
                         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                             <div className="relative flex-1 lg:min-w-[200px]">
-                                <select
-                                    value={orderStatusFilter}
-                                    onChange={(e) => setOrderStatusFilter(e.target.value as any)}
-                                    className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-widest focus:ring-2 focus:ring-stone-400 outline-none appearance-none transition-all cursor-pointer"
+                                <button
+                                    onClick={() => setActiveDropdownId(activeDropdownId === 'order-status-filter' ? null : 'order-status-filter')}
+                                    className="aura-dropdown-toggle w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-widest outline-none flex items-center justify-between transition-all cursor-pointer group hover:border-stone-300 dark:hover:border-neutral-600"
                                 >
-                                    <option value="all text-gray-400 font-bold">Total Status: All</option>
-                                    <option value="pending">Status: Pending</option>
-                                    <option value="confirmed">Status: Confirmed</option>
-                                    <option value="shipped">Status: Shipped</option>
-                                    <option value="delivered">Status: Delivered</option>
-                                    <option value="cancelled">Status: Cancelled</option>
-                                </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                </div>
+                                    <span>Status: {orderStatusFilter === 'all' ? 'All' : orderStatusFilter.charAt(0) + orderStatusFilter.slice(1)}</span>
+                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'order-status-filter' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+
+                                {activeDropdownId === 'order-status-filter' && (
+                                    <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
+                                        <div className="aura-dropdown-content">
+                                            {['all', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map(status => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => { setOrderStatusFilter(status as any); setActiveDropdownId(null); }}
+                                                    className={`aura-dropdown-item w-full ${orderStatusFilter === status ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                >
+                                                    {status === 'all' ? 'All' : status}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="relative flex-1 lg:min-w-[160px]">
-                                <select
-                                    value={orderSortMode}
-                                    onChange={(e) => setOrderSortMode(e.target.value as any)}
-                                    className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-widest focus:ring-2 focus:ring-stone-400 outline-none appearance-none transition-all cursor-pointer"
+                                <button
+                                    onClick={() => setActiveDropdownId(activeDropdownId === 'order-sort' ? null : 'order-sort')}
+                                    className="aura-dropdown-toggle w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-widest outline-none flex items-center justify-between transition-all cursor-pointer group hover:border-stone-300 dark:hover:border-neutral-600"
                                 >
-                                    <option value="newest">Sort: Newest</option>
-                                    <option value="status">Sort: Status</option>
-                                </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                </div>
+                                    <span>Sort: {orderSortMode === 'newest' ? 'Newest' : 'Status'}</span>
+                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'order-sort' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+
+                                {activeDropdownId === 'order-sort' && (
+                                    <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
+                                        <div className="aura-dropdown-content">
+                                            <button
+                                                onClick={() => { setOrderSortMode('newest'); setActiveDropdownId(null); }}
+                                                className={`aura-dropdown-item w-full ${orderSortMode === 'newest' ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                            >
+                                                Newest
+                                            </button>
+                                            <button
+                                                onClick={() => { setOrderSortMode('status'); setActiveDropdownId(null); }}
+                                                className={`aura-dropdown-item w-full ${orderSortMode === 'status' ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                            >
+                                                Status
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1100,8 +1217,8 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     ) : (
                         <>
                             {/* PC VIEW: High-Density Table */}
-                            <div className="hidden lg:block bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
-                                <div className="overflow-x-auto">
+                            <div className="hidden lg:block bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm overflow-visible">
+                                <div className="overflow-x-auto overflow-y-visible">
                                     <table className="w-full border-collapse">
                                         <thead>
                                             <tr className="bg-gray-50/50 dark:bg-neutral-800/50 border-b border-gray-100 dark:border-neutral-800">
@@ -1114,8 +1231,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50 dark:divide-neutral-800">
-                                            {sortedOrders.map((order) => {
+                                            {sortedOrders.map((order, index) => {
                                                 const statusConfig = getStatusConfig(order.status);
+                                                const isLastItems = index >= sortedOrders.length - 2;
                                                 return (
                                                     <tr key={order._id} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors group">
                                                         <td className="px-8 py-5">
@@ -1152,43 +1270,64 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                             <span className="text-base font-black text-gray-900 dark:text-white">${order.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                                         </td>
                                                         <td className="px-8 py-5">
-                                                            <div className="relative group/status inline-block">
-                                                                <button className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.1em] ${statusConfig.bg} ${statusConfig.text} ring-1 ring-inset ${statusConfig.bg.replace('bg-', 'ring-')}/20 shadow-sm transition-all hover:scale-105 active:scale-95`}>
-                                                                    <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.bg.replace('bg-', 'bg-').replace('-100', '-500')} ${statusConfig.text.replace('text-', 'bg-')}`}></div>
+                                                            <div className="relative">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setActiveDropdownId(activeDropdownId === order._id ? null : order._id);
+                                                                    }}
+                                                                    className={`aura-dropdown-toggle flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${statusConfig.bg} ${statusConfig.text} border border-transparent hover:border-current/20 shadow-sm`}
+                                                                >
+                                                                    {statusConfig.icon}
                                                                     {order.status}
-                                                                    <svg className="w-3 h-3 ml-0.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                                    <svg className={`w-3 h-3 transition-transform ${activeDropdownId === order._id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                                                                 </button>
-                                                                <div className="absolute top-full left-0 mt-2 w-40 hidden group-hover/status:block z-30">
-                                                                    <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-neutral-700 overflow-hidden p-2">
-                                                                        {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((status) => (
-                                                                            <button
-                                                                                key={status}
-                                                                                onClick={() => updateOrderStatus(order._id, status)}
-                                                                                className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all ${order.status === status ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-700/50 hover:text-stone-900 dark:hover:text-white'}`}
-                                                                            >
-                                                                                {status}
-                                                                            </button>
-                                                                        ))}
+
+                                                                {/* Standardized Dropdown - Smart Upward Logic */}
+                                                                {activeDropdownId === order._id && (
+                                                                    <div className={`aura-dropdown !block ${isLastItems ? 'bottom-full mb-3' : 'top-full pt-3'} left-0 min-w-[160px] z-50`}>
+                                                                        <div className="aura-dropdown-content">
+                                                                            {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((status) => {
+                                                                                const config = getStatusConfig(status);
+                                                                                return (
+                                                                                    <button
+                                                                                        key={status}
+                                                                                        onClick={() => updateOrderStatus(order._id, status)}
+                                                                                        className={`aura-dropdown-item ${order.status === status ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                                    >
+                                                                                        <div className={`w-4 h-4 flex items-center justify-center ${config.text}`}>
+                                                                                            {config.icon}
+                                                                                        </div>
+                                                                                        {status}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-5">
                                                             <div className="flex flex-col">
-                                                                <span className="text-[11px] font-bold text-gray-900 dark:text-white">{new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                                <span className="text-[10px] text-gray-400 font-medium tracking-tight">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                                                <span className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                                <span className="text-[10px] text-gray-400 font-medium">{new Date(order.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-5 text-right">
                                                             <div className="flex items-center justify-end gap-2">
-                                                                <button className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-neutral-800 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all flex items-center justify-center border border-gray-100 dark:border-neutral-700" title="Order Details">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedOrder(order);
+                                                                        setIsOrderModalOpen(true);
+                                                                    }}
+                                                                    className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-neutral-800 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all flex items-center justify-center border border-gray-100 dark:border-neutral-700" title="Order Details">
                                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                                 </button>
                                                                 {isFullAdmin && (
                                                                     <button
                                                                         onClick={() => handleDeleteOrder(order._id)}
-                                                                        className="w-9 h-9 rounded-xl bg-red-50/50 dark:bg-red-900/10 text-stone-400 hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-100 dark:hover:border-red-900/40"
-                                                                        title="Archive Order"
+                                                                        className="w-9 h-9 rounded-xl bg-red-50/50 dark:bg-red-900/10 text-stone-400 hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-100"
+                                                                        title="Delete Order"
                                                                     >
                                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                                     </button>
@@ -1208,31 +1347,50 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                 {sortedOrders.map((order) => {
                                     const statusConfig = getStatusConfig(order.status);
                                     return (
-                                        <div key={order._id} className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden relative group transition-all active:scale-[0.98]">
+                                        <div
+                                            key={order._id}
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setIsOrderModalOpen(true);
+                                            }}
+                                            className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden relative group transition-all active:scale-[0.98] cursor-pointer hover:border-stone-200 dark:hover:border-neutral-700"
+                                        >
                                             <div className="flex items-start justify-between mb-8">
                                                 <div className="min-w-0">
                                                     <h3 className="font-bold text-gray-900 dark:text-white text-xl leading-none">#{order._id.substring(order._id.length - 8).toUpperCase()}</h3>
                                                     <p className="text-sm font-bold text-stone-900 dark:text-white mt-2 truncate">{order.fullName}</p>
                                                     <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1 opacity-70">{new Date(order.createdAt).toLocaleDateString()}</p>
                                                 </div>
-                                                <div className="relative group/status flex-shrink-0">
-                                                    <button className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest ${statusConfig.bg} ${statusConfig.text} shadow-sm active:scale-90 transition-transform`}>
+                                                <div className="relative flex-shrink-0">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveDropdownId(activeDropdownId === order._id ? null : order._id);
+                                                        }}
+                                                        className={`aura-dropdown-toggle inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${statusConfig.bg} ${statusConfig.text} shadow-sm active:scale-90 transition-all`}
+                                                    >
                                                         {statusConfig.icon}
                                                         {order.status}
+                                                        <svg className={`w-3 h-3 transition-transform ${activeDropdownId === order._id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                                                     </button>
-                                                    <div className="absolute top-full right-0 mt-3 w-36 hidden group-hover/status:block z-20">
-                                                        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-neutral-700 overflow-hidden p-1.5 backdrop-blur-sm">
-                                                            {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((status) => (
-                                                                <button
-                                                                    key={status}
-                                                                    onClick={() => updateOrderStatus(order._id, status)}
-                                                                    className={`w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${order.status === status ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-700/50'}`}
-                                                                >
-                                                                    {status}
-                                                                </button>
-                                                            ))}
+
+                                                    {/* Standardized Dropdown */}
+                                                    {activeDropdownId === order._id && (
+                                                        <div className="aura-dropdown !block top-full right-0 pt-3 min-w-[160px]">
+                                                            <div className="aura-dropdown-content">
+                                                                {['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].map((status) => (
+                                                                    <button
+                                                                        key={status}
+                                                                        onClick={() => updateOrderStatus(order._id, status)}
+                                                                        className={`aura-dropdown-item ${order.status === status ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                    >
+                                                                        <div className={`w-1.5 h-1.5 rounded-full ${getStatusConfig(status).bg.replace('100', '500')}`} />
+                                                                        {status}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -1281,12 +1439,22 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                                     <span className="text-3xl font-black text-gray-900 dark:text-white leading-none">${order.total.toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-neutral-800 text-stone-900 dark:text-white flex items-center justify-center active:scale-95 transition-transform border border-gray-100 dark:border-neutral-700">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedOrder(order);
+                                                            setIsOrderModalOpen(true);
+                                                        }}
+                                                        className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-neutral-800 text-stone-900 dark:text-white flex items-center justify-center active:scale-95 transition-transform border border-gray-100 dark:border-neutral-700"
+                                                    >
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                     </button>
                                                     {isFullAdmin && (
                                                         <button
-                                                            onClick={() => handleDeleteOrder(order._id)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteOrder(order._id);
+                                                            }}
                                                             className="w-12 h-12 rounded-2xl bg-white dark:bg-neutral-800 text-red-500 flex items-center justify-center active:scale-95 transition-transform border border-red-50 dark:border-red-900/30 shadow-sm"
                                                         >
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -1322,9 +1490,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                    <div className={`bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm ${activeDropdownId ? 'overflow-visible' : 'overflow-hidden'}`}>
                         {/* PC Table View */}
-                        <div className="hidden lg:block overflow-x-auto">
+                        <div className="hidden lg:block overflow-x-auto overflow-y-visible">
                             <table className="w-full border-collapse">
                                 <thead className="bg-gray-50/50 dark:bg-neutral-800/50 border-b border-gray-100 dark:border-neutral-800">
                                     <tr>
@@ -1336,94 +1504,108 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50 dark:divide-neutral-800">
-                                    {users.map(user => (
-                                        <tr key={user._id} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors group">
-                                            <td className="px-8 py-5">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none">
-                                                        {user.name ? user.name.charAt(0).toUpperCase() : '?'}
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-bold text-gray-900 dark:text-white">{user.name}</div>
-                                                        <div className="text-[10px] text-gray-400 font-medium tracking-tight translate-y-[-1px]">{user.email}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                {isFullAdmin ? (
-                                                    <div className="relative inline-block w-36">
-                                                        <select
-                                                            value={user.role}
-                                                            onChange={(e) => handleUpdateUserRole(user._id, e.target.value)}
-                                                            disabled={updatingRoleUserId === user._id}
-                                                            className={`w-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-black outline-none transition-all appearance-none cursor-pointer ${user.role === 'admin'
-                                                                ? 'text-purple-600'
-                                                                : user.role === 'co-admin'
-                                                                    ? 'text-blue-600'
-                                                                    : 'text-stone-500'
-                                                                } ${updatingRoleUserId === user._id ? 'opacity-50' : ''}`}
-                                                        >
-                                                            <option value="customer">Customer</option>
-                                                            <option value="co-admin">Co-Admin</option>
-                                                            <option value="admin">Admin</option>
-                                                        </select>
-                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
-                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    {users.map((user, index) => {
+                                        const isLastItems = index >= users.length - 2;
+                                        return (
+                                            <tr key={user._id} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors group">
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none">
+                                                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-bold text-gray-900 dark:text-white">{user.name}</div>
+                                                            <div className="text-[10px] text-gray-400 font-medium tracking-tight translate-y-[-1px]">{user.email}</div>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${user.role === 'admin'
-                                                        ? 'bg-purple-50 text-purple-600 ring-1 ring-purple-100'
-                                                        : user.role === 'co-admin'
-                                                            ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-100'
-                                                            : 'bg-stone-50 text-stone-500 ring-1 ring-stone-100'
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    {isFullAdmin ? (
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setActiveDropdownId(activeDropdownId === `role-${user._id}` ? null : `role-${user._id}`);
+                                                                }}
+                                                                className={`aura-dropdown-toggle flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${getRoleConfig(user.role).bg} ${getRoleConfig(user.role).text} border border-transparent hover:border-current/20 shadow-sm ${updatingRoleUserId === user._id ? 'opacity-50' : ''}`}
+                                                            >
+                                                                {getRoleConfig(user.role).icon}
+                                                                {user.role}
+                                                                <svg className={`w-3 h-3 transition-transform ${activeDropdownId === `role-${user._id}` ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                                                            </button>
+
+                                                            {activeDropdownId === `role-${user._id}` && (
+                                                                <div className={`aura-dropdown !block ${isLastItems ? 'bottom-full mb-2' : 'top-full pt-2'} left-0 min-w-[140px] z-50`}>
+                                                                    <div className="aura-dropdown-content">
+                                                                        {['customer', 'co-admin', 'admin'].map(role => {
+                                                                            const config = getRoleConfig(role);
+                                                                            return (
+                                                                                <button
+                                                                                    key={role}
+                                                                                    onClick={() => { handleUpdateUserRole(user._id, role); setActiveDropdownId(null); }}
+                                                                                    className={`aura-dropdown-item w-full ${user.role === role ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                                >
+                                                                                    <div className={`w-4 h-4 flex items-center justify-center ${config.text}`}>
+                                                                                        {config.icon}
+                                                                                    </div>
+                                                                                    {role}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${getRoleConfig(user.role).bg} ${getRoleConfig(user.role).text} shadow-sm opacity-80`}>
+                                                            {getRoleConfig(user.role).icon}
+                                                            {user.role}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${user.isVerified
+                                                        ? 'bg-green-50 text-green-600 ring-1 ring-green-100'
+                                                        : 'bg-amber-50 text-amber-600 ring-1 ring-amber-100'
                                                         }`}>
-                                                        {user.role}
+                                                        <div className={`w-1 h-1 rounded-full ${user.isVerified ? 'bg-green-600' : 'bg-amber-600 animate-pulse'}`}></div>
+                                                        {user.isVerified ? 'Verified' : 'Pending'}
                                                     </span>
-                                                )}
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${user.isVerified
-                                                    ? 'bg-green-50 text-green-600 ring-1 ring-green-100'
-                                                    : 'bg-amber-50 text-amber-600 ring-1 ring-amber-100'
-                                                    }`}>
-                                                    <div className={`w-1 h-1 rounded-full ${user.isVerified ? 'bg-green-600' : 'bg-amber-600 animate-pulse'}`}></div>
-                                                    {user.isVerified ? 'Verified' : 'Pending'}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-bold text-gray-900 dark:text-white uppercase">{new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                    <span className="text-[10px] text-gray-400 font-medium">Auto-Registered</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5 text-right">
-                                                {isFullAdmin && user.role !== 'admin' && (
-                                                    <button
-                                                        onClick={() => setConfirmation({
-                                                            isOpen: true,
-                                                            type: 'deleteUser',
-                                                            id: user._id,
-                                                            title: 'Delete User',
-                                                            message: `Are you sure you want to delete ${user.name}? This cannot be undone.`,
-                                                            isDestructive: true
-                                                        })}
-                                                        className="w-9 h-9 rounded-xl bg-red-50/50 dark:bg-red-900/10 text-stone-400 hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-100"
-                                                        title="Terminate Access"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white uppercase">{new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                        <span className="text-[10px] text-gray-400 font-medium">Auto-Registered</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    {isFullAdmin && user.role !== 'admin' && (
+                                                        <button
+                                                            onClick={() => setConfirmation({
+                                                                isOpen: true,
+                                                                type: 'deleteUser',
+                                                                id: user._id,
+                                                                title: 'Delete User',
+                                                                message: `Are you sure you want to delete ${user.name}? This cannot be undone.`,
+                                                                isDestructive: true
+                                                            })}
+                                                            className="w-9 h-9 rounded-xl bg-red-50/50 dark:bg-red-900/10 text-stone-400 hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-100"
+                                                            title="Terminate Access"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
 
                         {/* Mobile Card View */}
                         <div className="lg:hidden divide-y divide-gray-100 dark:divide-neutral-800">
-                            {users.map(user => (
+                            {users.map((user, index) => (
                                 <div key={user._id} className="p-4 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -1453,19 +1635,47 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Role</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">Role</p>
                                             {isFullAdmin ? (
-                                                <select
-                                                    value={user.role}
-                                                    onChange={(e) => handleUpdateUserRole(user._id, e.target.value)}
-                                                    className="w-full px-2 py-1 text-xs font-medium rounded-lg bg-gray-50 dark:bg-neutral-800 border-none outline-none"
-                                                >
-                                                    <option value="customer">customer</option>
-                                                    <option value="co-admin">co-admin</option>
-                                                    <option value="admin">admin</option>
-                                                </select>
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setActiveDropdownId(activeDropdownId === `m-role-${user._id}` ? null : `m-role-${user._id}`)}
+                                                        className={`aura-dropdown-toggle flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${getRoleConfig(user.role).bg} ${getRoleConfig(user.role).text} border border-transparent hover:border-current/20 shadow-sm w-full justify-between active:scale-[0.98] ${updatingRoleUserId === user._id ? 'opacity-50' : ''}`}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            {getRoleConfig(user.role).icon}
+                                                            {user.role}
+                                                        </div>
+                                                        <svg className={`w-3 h-3 transition-transform ${activeDropdownId === `m-role-${user._id}` ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                                                    </button>
+
+                                                    {activeDropdownId === `m-role-${user._id}` && (
+                                                        <div className={`aura-dropdown !block ${index >= users.length - 1 ? 'bottom-full mb-2' : 'top-full pt-2'} left-0 w-full z-50`}>
+                                                            <div className="aura-dropdown-content">
+                                                                {['customer', 'co-admin', 'admin'].map(role => {
+                                                                    const config = getRoleConfig(role);
+                                                                    return (
+                                                                        <button
+                                                                            key={role}
+                                                                            onClick={() => { handleUpdateUserRole(user._id, role); setActiveDropdownId(null); }}
+                                                                            className={`aura-dropdown-item w-full ${user.role === role ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                        >
+                                                                            <div className={`w-4 h-4 flex items-center justify-center ${config.text}`}>
+                                                                                {config.icon}
+                                                                            </div>
+                                                                            {role}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ) : (
-                                                <span className="text-xs font-medium text-gray-900 dark:text-white">{user.role}</span>
+                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getRoleConfig(user.role).bg} ${getRoleConfig(user.role).text} shadow-sm opacity-80`}>
+                                                    {getRoleConfig(user.role).icon}
+                                                    {user.role}
+                                                </div>
                                             )}
                                         </div>
                                         <div>
@@ -1787,24 +1997,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-900 dark:bg-black dark:text-white transition-colors duration-300">
-                <div className="absolute inset-0 -z-10 opacity-30">
-                    <Plasma
-                        color={isDark ? '#ffffff' : '#1c1917'}
-                        speed={0.5}
-                        direction="forward"
-                        scale={1.2}
-                        opacity={isDark ? 0.2 : 0.35}
-                        mouseInteractive={true}
-                    />
-                </div>
-                <div className="relative text-xl font-medium flex items-center gap-3">
-                    <div className="w-6 h-6 border-2 border-stone-500 border-t-transparent rounded-full animate-spin"></div>
-                    Loading dashboard...
-                </div>
-            </div>
-        );
+        return <LoadingScreen message="Accessing Secure Archives..." />;
     }
 
     return (
@@ -1849,8 +2042,24 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         );
                     })}
                 </nav>
-                <div className="p-4 border-t border-gray-100 dark:border-neutral-800 space-y-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 px-2">Welcome, {adminEmail}</p>
+                <div className="p-4 border-t border-gray-100 dark:border-neutral-800 space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none transition-transform hover:rotate-3">
+                                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest leading-tight">Admin Console</p>
+                                <p className="text-sm font-bold text-stone-900 dark:text-white truncate">Welcome, {user?.name || 'Administrator'}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setProfileOpen(true)}
+                            className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-xl transition-all hover:rotate-90 duration-500"
+                        >
+                            <Settings className="w-4 h-4" />
+                        </button>
+                    </div>
                     <button
                         onClick={() => navigate('/')}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
@@ -1869,7 +2078,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             </aside>
 
             <main className="flex-1 flex flex-col h-full overflow-hidden relative w-full pb-20 lg:pb-0">
-                <header className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border-b border-gray-200 dark:border-neutral-800 p-4 sm:p-5 flex items-center justify-between z-10">
+                <header className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border-b border-gray-200 dark:border-neutral-800 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-5 sm:pb-5 sm:pt-[calc(1.25rem+env(safe-area-inset-top))] flex items-center justify-between z-10">
                     <div className="flex items-center gap-3">
                         <div className="lg:hidden relative w-3 h-3 bg-stone-900 dark:bg-white [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)]"></div>
                         <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -1877,6 +2086,22 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                         </h1>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-4">
+                        {/* Mobile Welcome Pill */}
+                        <div className="lg:hidden flex items-center gap-2 px-2.5 py-1.5 bg-stone-50 dark:bg-neutral-800 rounded-full border border-stone-100 dark:border-neutral-700 shadow-sm">
+                            <div className="w-5 h-5 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black">
+                                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                            </div>
+                            <span className="text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-tight max-w-[70px] truncate">
+                                {user?.name?.split(' ')[0] || 'Admin'}
+                            </span>
+                            <button
+                                onClick={() => setProfileOpen(true)}
+                                className="ml-1 p-0.5 text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all hover:rotate-90 duration-500"
+                            >
+                                <Settings className="w-3 h-3" />
+                            </button>
+                        </div>
+
                         <button
                             onClick={() => navigate('/')}
                             className="lg:hidden p-2 rounded-xl bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
@@ -1901,7 +2126,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative no-scrollbar">
-                    <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-30">
+                    <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-30 hidden lg:block">
                         <Plasma
                             color={isDark ? '#ffffff' : '#1c1917'}
                             speed={0.5}
@@ -1937,7 +2162,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             </main>
 
             {/* Admin Bottom Navigation (Mobile/Tablet only) */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-gray-200 dark:border-neutral-800 z-50 px-2 pb-safe-area-inset-bottom">
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-gray-200 dark:border-neutral-800 z-50 px-2 pb-safe">
                 <div className="flex justify-around items-center h-16 max-w-md mx-auto">
                     {navItems.map(item => {
                         const Icon = item.id === 'dashboard' ? LayoutGrid :
@@ -1978,6 +2203,19 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 </div>
             </nav>
 
+            <AccountSidebar
+                isOpen={isProfileOpen}
+                onClose={() => setProfileOpen(false)}
+            />
+
+            <OrderDetailsModal
+                isOpen={isOrderModalOpen}
+                onClose={() => setIsOrderModalOpen(false)}
+                order={selectedOrder}
+                products={products}
+                getImageUrl={getImageUrl}
+            />
+
             <ConfirmationModal
                 isOpen={confirmation.isOpen}
                 onClose={() => setConfirmation({ ...confirmation, isOpen: false })}
@@ -1987,9 +2225,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 isDestructive={confirmation.isDestructive}
                 confirmText={
                     confirmation.type === 'logout' ? 'Logout' :
-                    confirmation.type === 'editProduct' ? 'Update' :
-                    confirmation.type === 'addProduct' ? 'Add' :
-                    'Delete'
+                        confirmation.type === 'editProduct' ? 'Update' :
+                            confirmation.type === 'addProduct' ? 'Add' :
+                                'Delete'
                 }
             />
         </div>

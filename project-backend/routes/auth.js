@@ -22,10 +22,13 @@ router.post('/signup', async (req, res) => {
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour
 
+    const role = email === process.env.ADMIN_EMAIL ? 'admin' : 'customer';
+
     user = new User({
       name,
       email,
       password,
+      role, // Auto-promote if matches admin email
       isVerified: false,
       verificationCode,
       verificationCodeExpires
@@ -78,7 +81,7 @@ router.post('/verify-email', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ token: jwtToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token: jwtToken, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -119,7 +122,30 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Check for Hardcoded Admin (Legacy/Dev Support)
+    // 1. Check Database User
+    const user = await User.findOne({ email });
+    if (user) {
+      const isMatch = await user.matchPassword(password);
+      if (isMatch) {
+        if (!user.isVerified) {
+          return res.status(403).json({ message: 'Please verify your email address before logging in.' });
+        }
+
+        const token = jwt.sign(
+          { userId: user._id, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+
+        return res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+      }
+      // If user exists but password doesn't match, we SHOULD NOT fall through to hardcoded admin check
+      // unless we want to allow two different passwords for the same email (confusing security).
+      // Standard practice: if user exists, authoritative source is DB.
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // 2. Check for Hardcoded Admin (Legacy/Dev Support) - Only if NO DB user found
     if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
       const token = jwt.sign(
         { email, role: 'admin' }, // No userId for hardcoded admin
@@ -129,16 +155,7 @@ router.post('/login', async (req, res) => {
       return res.json({ token, user: { name: 'Admin', email, role: 'admin' } });
     }
 
-    // 2. Check Database User
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
+    return res.status(400).json({ message: 'Invalid credentials' });
 
     if (!user.isVerified) {
       return res.status(403).json({ message: 'Please verify your email address before logging in.' });
@@ -150,7 +167,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -177,7 +194,7 @@ router.get('/me', authenticateToken, async (req, res) => {
 // Update profile
 router.put('/me', authenticateToken, async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, avatar } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -187,6 +204,7 @@ router.put('/me', authenticateToken, async (req, res) => {
     if (name) user.name = name;
     if (phone) user.phone = phone;
     if (address) user.address = address;
+    if (avatar !== undefined) user.avatar = avatar;
 
     await user.save();
 
@@ -196,7 +214,8 @@ router.put('/me', authenticateToken, async (req, res) => {
       email: user.email,
       role: user.role,
       phone: user.phone,
-      address: user.address
+      address: user.address,
+      avatar: user.avatar
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

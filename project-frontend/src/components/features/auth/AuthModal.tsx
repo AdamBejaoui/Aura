@@ -3,7 +3,7 @@ import { X, Mail, Lock, User, AlertCircle, Eye, EyeOff, ShieldCheck, Sparkles, A
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuthStore } from '../../../store/authStore';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 type AuthModalProps = {
     isOpen: boolean;

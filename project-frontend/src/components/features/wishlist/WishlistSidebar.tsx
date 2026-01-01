@@ -132,7 +132,7 @@ const WishlistSidebar = () => {
 
                 {/* Footer - Optional Quick Actions */}
                 {items.length > 0 && (
-                    <div className="pt-10">
+                    <div className="pt-10 pb-32 md:pb-0">
                         <button
                             onClick={toggleWishlist}
                             className="w-full py-5 bg-stone-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all"
