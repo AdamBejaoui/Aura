@@ -10,10 +10,10 @@ import { useUIStore } from '../../store/uiStore';
 const MobileNav: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { isMobileSearchOpen, setMobileSearchOpen } = useUIStore();
+    const { isMobileSearchOpen, setMobileSearchOpen, isProductDetailOpen } = useUIStore();
     const { items: cartItems, checkoutOpen, toggleCheckout } = useCartStore();
     const { items: wishlistItems, isOpen: isWishlistOpen, toggleWishlist: toggleWishlistSidebar } = useWishlistStore();
-    const { isOrdersOpen, setOrdersOpen, setProfileOpen, setAuthOpen, isProfileOpen } = useAuthStore();
+    const { isOrdersOpen, setOrdersOpen, setProfileOpen, setAuthOpen, isProfileOpen, isAuthOpen } = useAuthStore();
 
     // Close all sidebars when location changes
     React.useEffect(() => {
@@ -94,19 +94,19 @@ const MobileNav: React.FC = () => {
             icon: Package,
             path: '/',
             action: () => {
-                const wasOpen = isOrdersOpen; // Use actual state for orders if available
+                const wasOpen = isOrdersOpen;
                 closeAll();
                 if (!wasOpen) setOrdersOpen(true);
             }
         },
     ];
 
-    if (isProfileOpen) return null;
+    if (isProfileOpen || isProductDetailOpen || isAuthOpen || checkoutOpen || isWishlistOpen || isOrdersOpen) return null;
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden px-6 pb-4 pt-2 pointer-events-none mb-safe">
+        <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden px-6 pb-8 pt-2 pointer-events-none mb-safe">
             <div className="max-w-md mx-auto pointer-events-auto">
-                <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-2xl border border-stone-100 dark:border-neutral-800 rounded-[2.5rem] shadow-2xl flex items-center justify-around p-3">
+                <div className="bg-white/70 dark:bg-black/70 backdrop-blur-2xl border border-stone-100/50 dark:border-neutral-800/50 rounded-[2.5rem] shadow-2xl shadow-stone-200/50 dark:shadow-none flex items-center justify-around p-2 premium-blur luxury-grain">
                     {navItems.map((item) => {
                         const isSearchActive = item.id === 'search' && isMobileSearchOpen;
                         const isCartActive = item.id === 'cart' && checkoutOpen;
@@ -132,19 +132,19 @@ const MobileNav: React.FC = () => {
                                 className="relative flex flex-col items-center justify-center w-full py-2 tap-highlight-transparent group"
                             >
                                 <motion.div
-                                    whileTap={{ scale: 0.8 }}
+                                    whileTap={{ scale: 0.9 }}
                                     className={`relative z-10 transition-all duration-500 ${isActive
-                                        ? 'text-stone-900 dark:text-white scale-110'
-                                        : 'text-stone-300 dark:text-stone-600 group-hover:text-stone-900 dark:group-hover:text-stone-300'
+                                        ? 'text-black dark:text-white scale-110'
+                                        : 'text-stone-400 dark:text-stone-600 group-hover:text-black dark:group-hover:text-white'
                                         }`}
                                 >
-                                    <Icon className={`w-6 h-6 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                                    <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2px]' : 'stroke-1.5'}`} />
 
                                     {item.badge !== undefined && item.badge > 0 && (
                                         <motion.span
                                             initial={{ scale: 0 }}
                                             animate={{ scale: 1 }}
-                                            className="absolute -top-1 -right-1 bg-stone-900 dark:bg-white text-white dark:text-black text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-neutral-900"
+                                            className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white dark:border-neutral-900"
                                         >
                                             {item.badge}
                                         </motion.span>
@@ -154,8 +154,8 @@ const MobileNav: React.FC = () => {
                                 {isActive && (
                                     <motion.div
                                         layoutId="mobileNavActive"
-                                        className="absolute inset-x-1 inset-y-0.5 bg-stone-50 dark:bg-neutral-800/50 rounded-[2rem] -z-0"
-                                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                                        className="absolute inset-x-1 inset-y-1 bg-stone-50 dark:bg-neutral-800/80 rounded-2xl -z-0"
+                                        transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
                                     />
                                 )}
                             </button>

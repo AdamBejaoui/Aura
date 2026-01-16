@@ -18,16 +18,12 @@ const orderSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    trim: true
+    trim: true,
+    lowercase: true
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  },
-  size: {
-    type: String,
-    required: true,
-    enum: ['XS', 'S', 'M', 'L', 'XL']
   },
   items: [{
     productId: {
@@ -43,6 +39,10 @@ const orderSchema = new mongoose.Schema({
     price: {
       type: Number,
       required: true
+    },
+    size: {
+      type: String,
+      enum: ['XS', 'S', 'M', 'L', 'XL', '']
     }
   }],
   total: {
@@ -58,6 +58,14 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ['cod', 'card'],
     default: 'cod'
+  },
+  coupon: {
+    code: String,
+    discountPercent: Number
+  },
+  discountAmount: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

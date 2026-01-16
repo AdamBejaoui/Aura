@@ -305,4 +305,48 @@ router.delete('/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// --- GOOGLE OAUTH ROUTES ---
+const passport = require('../config/passport');
+
+// Initiate Google OAuth
+router.get('/google',
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false
+  })
+);
+
+// Google OAuth Callback
+router.get('/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}?error=auth_failed` }),
+  (req, res) => {
+    try {
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: req.user._id, role: req.user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      // Prepare user data
+      const userData = {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        avatar: req.user.avatar
+      };
+
+      // Redirect to frontend with token only (frontend will fetch user data)
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+      console.log(`Redirecting to: ${frontendUrl}`);
+      res.redirect(`${frontendUrl}?token=${token}`);
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+      res.redirect(`${frontendUrl}?error=auth_failed`);
+    }
+  }
+);
+
 module.exports = router;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Star, User, Send, MessageSquare } from "lucide-react";
 import axios from "axios";
+import { useAuthStore } from "../../../store/authStore";
 
 type Review = {
     _id: string;
@@ -17,11 +18,16 @@ type ReviewSectionProps = {
 };
 
 const ReviewSection = ({ productId, reviews, onReviewAdded }: ReviewSectionProps) => {
+    const { user } = useAuthStore();
     const [rating, setRating] = useState(5);
-    const [name, setName] = useState("");
+    const [name, setName] = useState(user?.name || "");
     const [comment, setComment] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (user?.name) setName(user.name);
+    }, [user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -97,6 +103,11 @@ const ReviewSection = ({ productId, reviews, onReviewAdded }: ReviewSectionProps
                 <h4 className="text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-[0.3em] mb-8 text-center">Contribute to the Archive</h4>
                 <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="flex flex-col items-center gap-4">
+                        {user?.avatar && (
+                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-stone-100 dark:border-neutral-800 shadow-lg mb-2">
+                                <img src={user.avatar} alt="You" className="w-full h-full object-cover" />
+                            </div>
+                        )}
                         <span className="text-[8px] font-black text-stone-400 uppercase tracking-widest">Satisfaction Level</span>
                         <div className="flex gap-2">
                             {[1, 2, 3, 4, 5].map((star) => (

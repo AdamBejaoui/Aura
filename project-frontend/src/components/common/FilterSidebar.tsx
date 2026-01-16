@@ -38,22 +38,22 @@ const FilterSidebar = ({
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-                className="relative w-full max-w-md bg-white dark:bg-neutral-900 h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-stone-100 dark:border-neutral-800 md:rounded-l-[3rem] p-8 md:p-10 pt-safe overflow-hidden"
+                className="relative w-full max-w-md bg-white dark:bg-neutral-900 h-full shadow-premium flex flex-col border-l border-stone-200 dark:border-neutral-800 md:rounded-l-3xl p-8 md:p-10 pt-safe overflow-hidden"
             >
                 <div className="flex flex-col h-full">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-12">
                         <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-stone-50 dark:bg-neutral-800 rounded-2xl border border-stone-100 dark:border-neutral-800">
-                                <Filter className="w-5 h-5 text-stone-900 dark:text-white" />
+                            <div className="p-2.5 bg-stone-50 dark:bg-neutral-800 rounded-xl border border-stone-200 dark:border-neutral-800">
+                                <Filter className="w-4 h-4 text-black dark:text-white" />
                             </div>
-                            <h2 className="text-xl font-black text-stone-900 dark:text-white uppercase tracking-tighter">Filters</h2>
+                            <h2 className="text-xl font-black text-black dark:text-white uppercase tracking-tighter">Filters</h2>
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-3 text-stone-400 hover:text-stone-900 dark:hover:text-white bg-stone-50 dark:bg-neutral-800 rounded-2xl border border-stone-100 dark:border-neutral-800 transition-all hover:scale-110 hover:rotate-90 duration-300"
+                            className="p-3 text-stone-400 hover:text-black dark:hover:text-white bg-stone-50 dark:bg-neutral-800 rounded-xl border border-stone-200 dark:border-neutral-800 transition-all hover:scale-110 hover:rotate-90 duration-300"
                         >
-                            <X className="w-5 h-5" />
+                            <X className="w-4 h-4" />
                         </button>
                     </div>
 
@@ -74,9 +74,9 @@ const FilterSidebar = ({
                                     <button
                                         key={option.value}
                                         onClick={() => onFilterChange("sort", option.value)}
-                                        className={`flex items-center justify-between px-6 py-4 rounded-2xl border transition-all ${filters.sort === option.value
-                                            ? "bg-stone-900 border-transparent text-white dark:bg-white dark:text-black shadow-xl"
-                                            : "bg-white dark:bg-neutral-900 border-stone-100 dark:border-neutral-800 text-stone-500 hover:border-stone-400 dark:hover:border-stone-500"
+                                        className={`flex items-center justify-between px-6 py-4 rounded-xl border transition-all ${filters.sort === option.value
+                                            ? "bg-black border-transparent text-white dark:bg-white dark:text-black shadow-premium"
+                                            : "bg-white dark:bg-neutral-900 border-stone-200 dark:border-neutral-800 text-stone-500 hover:border-black dark:hover:border-white"
                                             }`}
                                     >
                                         <span className="text-[10px] font-black uppercase tracking-wider">{option.label}</span>
@@ -101,7 +101,7 @@ const FilterSidebar = ({
                                         value={filters.minPrice}
                                         onChange={(e) => onFilterChange("minPrice", e.target.value)}
                                         placeholder="0"
-                                        className="w-full px-5 py-4 bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-2xl focus:outline-none focus:ring-4 focus:ring-stone-900/5 dark:focus:ring-white/5 focus:border-stone-400 dark:focus:border-neutral-600 transition-all font-black text-xs"
+                                        className="w-full px-5 py-4 bg-stone-50 dark:bg-neutral-800 border border-stone-200 dark:border-neutral-800 rounded-xl focus:outline-none focus:ring-4 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-white transition-all font-black text-xs"
                                     />
                                 </div>
                                 <div className="flex-1 space-y-2">
@@ -111,7 +111,7 @@ const FilterSidebar = ({
                                         value={filters.maxPrice}
                                         onChange={(e) => onFilterChange("maxPrice", e.target.value)}
                                         placeholder="∞"
-                                        className="w-full px-5 py-4 bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-2xl focus:outline-none focus:ring-4 focus:ring-stone-900/5 dark:focus:ring-white/5 focus:border-stone-400 dark:focus:border-neutral-600 transition-all font-black text-xs"
+                                        className="w-full px-5 py-4 bg-stone-50 dark:bg-neutral-800 border border-stone-200 dark:border-neutral-800 rounded-xl focus:outline-none focus:ring-4 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-white transition-all font-black text-xs"
                                     />
                                 </div>
                             </div>
@@ -124,13 +124,13 @@ const FilterSidebar = ({
                             </h3>
                             <button
                                 onClick={() => onFilterChange("inStock", !filters.inStock)}
-                                className={`w-full flex items-center justify-between px-6 py-5 rounded-2xl border transition-all ${filters.inStock
-                                    ? "bg-stone-50 dark:bg-neutral-800/50 border-stone-900 dark:border-white"
-                                    : "bg-white dark:bg-neutral-900 border-stone-100 dark:border-neutral-800"
+                                className={`w-full flex items-center justify-between px-6 py-5 rounded-xl border transition-all ${filters.inStock
+                                    ? "bg-stone-50 dark:bg-neutral-800/50 border-black dark:border-white"
+                                    : "bg-white dark:bg-neutral-900 border-stone-200 dark:border-neutral-800"
                                     }`}
                             >
                                 <span className="text-[10px] font-black uppercase tracking-wider text-stone-900 dark:text-white">In Stock Pieces Only</span>
-                                <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 ${filters.inStock ? 'bg-stone-900 dark:bg-white' : 'bg-stone-100 dark:bg-neutral-800'}`}>
+                                <div className={`w-10 h-6 rounded-full p-1 transition-colors duration-300 ${filters.inStock ? 'bg-black dark:bg-white' : 'bg-stone-100 dark:bg-neutral-800'}`}>
                                     <div className={`w-4 h-4 rounded-full bg-white dark:bg-black transition-transform duration-300 ${filters.inStock ? 'translate-x-4' : 'translate-x-0'}`} />
                                 </div>
                             </button>
@@ -141,7 +141,7 @@ const FilterSidebar = ({
                     <div className="pt-10 space-y-4">
                         <button
                             onClick={onClose}
-                            className="w-full py-5 bg-stone-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+                            className="w-full py-5 bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-premium hover:scale-[1.02] active:scale-[0.98] transition-all"
                         >
                             Apply Filters
                         </button>

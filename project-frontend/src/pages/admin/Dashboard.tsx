@@ -11,6 +11,7 @@ import {
     LayoutGrid,
     PlusCircle,
     Package,
+    Ticket,
     Users,
     MessageSquare,
     LogOut,
@@ -34,8 +35,23 @@ import {
     User,
     ShieldAlert,
     Settings,
+    Trash2,
+    BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    ResponsiveContainer,
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    PieChart,
+    Pie,
+    Cell,
+    Legend
+} from 'recharts';
 import AccountSidebar from "../../components/features/auth/AccountSidebar";
 import LoadingScreen from "../../components/common/LoadingScreen";
 
@@ -165,10 +181,18 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
     const [isAdding, setIsAdding] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
-    const [activeSection, setActiveSection] = useState<'dashboard' | 'addProduct' | 'orders' | 'users' | 'reviews'>('dashboard');
+    const [activeSection, setActiveSection] = useState<'dashboard' | 'analytics' | 'addProduct' | 'orders' | 'users' | 'reviews' | 'coupons'>('dashboard');
+    const [inventoryView, setInventoryView] = useState<'list' | 'form'>('list'); // New state for Inventory Management
     const [users, setUsers] = useState<any[]>([]);
     const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
     const [reviews, setReviews] = useState<any[]>([]);
+    const [coupons, setCoupons] = useState<any[]>([]);
+    const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+    const [newCoupon, setNewCoupon] = useState({
+        code: '',
+        discountPercent: 0,
+        expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0] // Default 1 month
+    });
     const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
     const [stats, setStats] = useState<any>(null);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -251,6 +275,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 } else if (activeSection === 'reviews') {
                     const res = await axios.get('/api/products/reviews/all', authHeader);
                     setReviews(res.data);
+                } else if (activeSection === 'coupons') {
+                    const res = await axios.get('/api/coupons', authHeader);
+                    setCoupons(res.data);
                 } else {
                     const [productsRes, ordersRes] = await Promise.all([
                         axios.get('/api/products', authHeader),
@@ -417,7 +444,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             setSelectedFiles([]);
             if (fileInputRef.current) fileInputRef.current.value = '';
             setIsAdding(false);
-            setActiveSection('dashboard');
+            // Stay in addProduct section but switch to list view
+            setInventoryView('list');
+            setActiveSection('addProduct');
         } catch (err: any) {
             console.error('Full Error Object:', err);
             if (err.response && err.response.status === 500) {
@@ -466,6 +495,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         setImagePreviews([...productImages]);
         setSelectedFiles([]); // Clear any previously selected files
         setIsEditing(true);
+        setInventoryView('form'); // Switch to form view
         setActiveSection('addProduct');
         setError('');
     };
@@ -478,7 +508,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
         setIsEditing(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
         setError('');
-        setActiveSection('dashboard');
+        setInventoryView('list'); // Return to list view
     };
 
     const handleDeleteProduct = (productId: string) => {
@@ -580,7 +610,9 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
 
     const allNavItems = [
         { id: 'dashboard', label: 'Dashboard', description: 'Overview & Stats', adminOnly: false },
-        { id: 'addProduct', label: 'Add Product', description: 'Inventory Management', adminOnly: true },
+        { id: 'analytics', label: 'Analytics', description: 'Deep Insights', adminOnly: true },
+        { id: 'coupons', label: 'Coupons', description: 'Privilege Management', adminOnly: true },
+        { id: 'addProduct', label: 'Inventory', description: 'Product Management', adminOnly: true },
         { id: 'orders', label: 'Orders', description: 'Order Processing', adminOnly: false },
         { id: 'users', label: 'Users', description: 'Customer Accounts', adminOnly: true },
         { id: 'reviews', label: 'Reviews', description: 'Product Reviews', adminOnly: false },
@@ -802,6 +834,7 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
             return (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Standardized Header */}
+                    {/* Header */}
                     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm">
                         <div className="flex items-center gap-4">
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white ${isEditing ? 'bg-amber-500' : 'bg-stone-900 dark:bg-white dark:text-black'}`}>
@@ -809,321 +842,481 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {isEditing ? 'Edit Product' : 'Inventory Creation'}
+                                    {inventoryView === 'list' ? 'Inventory Management' : (isEditing ? 'Edit Product' : 'Add New Product')}
                                 </h2>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {isEditing ? `Modifying "${newProduct.name}"` : 'Configure showcase items for your storefront'}
+                                    {inventoryView === 'list'
+                                        ? `${products.length} items in catalog • ${products.filter(p => !p.inStock).length} out of stock`
+                                        : (isEditing ? `Modifying "${newProduct.name}"` : 'Configure showcase items for your storefront')}
                                 </p>
                             </div>
                         </div>
-                        {isEditing && (
-                            <button
-                                onClick={cancelEditing}
-                                className="px-6 py-2.5 bg-gray-50 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all border border-gray-100 dark:border-neutral-700 shadow-sm"
-                            >
-                                Discard Changes
-                            </button>
-                        )}
+                        <div className="flex gap-3">
+                            {inventoryView === 'form' && (
+                                <button
+                                    onClick={cancelEditing}
+                                    className="px-6 py-2.5 bg-gray-50 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all border border-gray-100 dark:border-neutral-700 shadow-sm"
+                                >
+                                    {isEditing ? 'Discard Changes' : 'Back to Inventory'}
+                                </button>
+                            )}
+                            {inventoryView === 'list' && (
+                                <button
+                                    onClick={() => {
+                                        setInventoryView('form');
+                                        setIsEditing(false);
+                                        setNewProduct({ name: '', category: 'New Arrivals', price: 0, description: '', images: [], inStock: true, currency: 'TND' });
+                                        setImagePreviews([]);
+                                        setSelectedFiles([]);
+                                    }}
+                                    className="px-6 py-3 bg-stone-900 hover:bg-black dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-stone-500/20 flex items-center gap-2"
+                                >
+                                    <PlusCircle className="w-4 h-4" />
+                                    Add Product
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    <form onSubmit={handleFormSubmit} className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-                        {/* Left Column: Form Fields */}
-                        <div className="lg:col-span-2 space-y-6">
-                            <div className="bg-white dark:bg-neutral-900 rounded-3xl p-8 border border-gray-100 dark:border-neutral-800 shadow-sm">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                                        <PlusCircle className="w-5 h-5" />
-                                    </div>
-                                    General Information
-                                </h3>
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.name}
-                                            onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition-all"
-                                            placeholder="e.g. Midnight Velvet Dress"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setActiveDropdownId(activeDropdownId === 'category' ? null : 'category')}
-                                                    className="aura-dropdown-toggle w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl flex items-center justify-between focus:ring-2 focus:ring-stone-500/20 outline-none transition-all group"
-                                                >
-                                                    <span className="text-sm font-bold uppercase tracking-widest">{newProduct.category}</span>
-                                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'category' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </button>
-
-                                                {activeDropdownId === 'category' && (
-                                                    <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
-                                                        <div className="aura-dropdown-content">
-                                                            {categories.map(cat => (
-                                                                <button
-                                                                    key={cat}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setNewProduct({ ...newProduct, category: cat });
-                                                                        setActiveDropdownId(null);
-                                                                    }}
-                                                                    className={`aura-dropdown-item w-full ${newProduct.category === cat ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
-                                                                >
-                                                                    {cat}
-                                                                </button>
-                                                            ))}
+                    {inventoryView === 'list' ? (
+                        /* INVENTORY LIST VIEW */
+                        <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                            {/* Desktop Table */}
+                            <div className="hidden lg:block overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                    <thead className="bg-gray-50/50 dark:bg-neutral-800/50 border-b border-gray-100 dark:border-neutral-800">
+                                        <tr>
+                                            <th className="px-8 py-6 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Product</th>
+                                            <th className="px-8 py-6 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Category</th>
+                                            <th className="px-8 py-6 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Price</th>
+                                            <th className="px-8 py-6 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Status</th>
+                                            <th className="px-8 py-6 text-right text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50 dark:divide-neutral-800">
+                                        {products.map((product) => (
+                                            <tr key={product._id} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors group">
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-16 rounded-lg bg-gray-100 dark:bg-neutral-800 overflow-hidden relative border border-gray-100 dark:border-neutral-700">
+                                                            {product.images?.[0] ? (
+                                                                <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-[9px] text-gray-400 font-bold">NO IMG</div>
+                                                            )}
                                                         </div>
+                                                        <div className="font-bold text-gray-900 dark:text-white">{product.name}</div>
                                                     </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className="text-xs font-medium text-stone-50 bg-stone-50 dark:bg-neutral-800 px-3 py-1 rounded-full border border-stone-100 dark:border-neutral-700">
+                                                        {product.category}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className="font-bold text-gray-900 dark:text-white">
+                                                        {product.currency} {product.price.toFixed(2)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${product.inStock
+                                                        ? 'bg-green-50 text-green-600 ring-1 ring-green-100 dark:bg-green-900/10 dark:text-green-400 dark:ring-green-900/30'
+                                                        : 'bg-red-50 text-red-600 ring-1 ring-red-100 dark:bg-red-900/10 dark:text-red-400 dark:ring-red-900/30'
+                                                        }`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${product.inStock ? 'bg-green-600 dark:bg-green-400' : 'bg-red-600 dark:bg-red-400'}`}></div>
+                                                        {product.inStock ? 'In Stock' : 'Out of Stock'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => startEditing(product)}
+                                                            className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-white bg-transparent hover:bg-stone-50 dark:hover:bg-neutral-800 rounded-lg transition-all"
+                                                            title="Edit"
+                                                        >
+                                                            <Settings className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteProduct(product._id)}
+                                                            className="p-2 text-stone-400 hover:text-red-500 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-all"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile List (Cards) - Styled like Orders/Overview */}
+                            <div className="lg:hidden p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {products.map((product) => (
+                                    <div key={product._id} className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden relative group transition-all cursor-pointer hover:border-stone-200 dark:hover:border-neutral-700">
+                                        <div className="flex items-start justify-between mb-6">
+                                            <div className="min-w-0 pr-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{product.category}</span>
+                                                </div>
+                                                <h3 className="font-bold text-gray-900 dark:text-white text-xl leading-tight line-clamp-2">{product.name}</h3>
+                                                <p className="text-stone-500 text-xs mt-1 font-medium truncate max-w-[200px]">{product._id}</p>
+                                            </div>
+                                            <div className="flex gap-2 flex-shrink-0">
+                                                <button
+                                                    onClick={() => startEditing(product)}
+                                                    className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-neutral-800 hover:bg-stone-100 dark:hover:bg-neutral-700 flex items-center justify-center text-stone-600 dark:text-stone-300 transition-all"
+                                                >
+                                                    <Settings className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteProduct(product._id)}
+                                                    className="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 flex items-center justify-center text-red-500 transition-all"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-6 mb-8">
+                                            <div className="w-24 h-32 rounded-2xl bg-gray-50 dark:bg-neutral-800 overflow-hidden flex-shrink-0 border border-gray-100 dark:border-neutral-700">
+                                                {product.images?.[0] ? (
+                                                    <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold">NO IMG</div>
                                                 )}
+                                            </div>
+                                            <div className="flex-1 space-y-4">
+                                                <div>
+                                                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Price</span>
+                                                    <span className="text-2xl font-black text-gray-900 dark:text-white">{product.currency} {product.price.toFixed(2)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Stock Status</span>
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${product.inStock
+                                                        ? 'bg-green-50 text-green-600 dark:bg-green-900/10 dark:text-green-400'
+                                                        : 'bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400'
+                                                        }`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${product.inStock ? 'bg-green-600 dark:bg-green-400' : 'bg-red-600 dark:bg-red-400'}`}></div>
+                                                        {product.inStock ? 'In Stock' : 'Out'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-6 border-t border-gray-100 dark:border-neutral-800 flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                                <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-neutral-700"></div>
+                                                In Catalog
+                                            </div>
+                                            <span className="text-[10px] font-bold text-stone-900 dark:text-white uppercase tracking-widest px-3 py-1 bg-stone-100 dark:bg-neutral-800 rounded-lg">Product Item</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        /* ADD/EDIT FORM VIEW */
+                        <form onSubmit={handleFormSubmit} className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+                            {/* Left Column: Form Fields */}
+                            <div className="lg:col-span-2 space-y-6">
+                                <div className="bg-white dark:bg-neutral-900 rounded-3xl p-8 border border-gray-100 dark:border-neutral-800 shadow-sm">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                            <PlusCircle className="w-5 h-5" />
+                                        </div>
+                                        General Information
+                                    </h3>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name</label>
+                                            <input
+                                                type="text"
+                                                value={newProduct.name}
+                                                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition-all"
+                                                placeholder="e.g. Midnight Velvet Dress"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
+                                                <div className="relative">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveDropdownId(activeDropdownId === 'category' ? null : 'category')}
+                                                        className="aura-dropdown-toggle w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl flex items-center justify-between focus:ring-2 focus:ring-stone-500/20 outline-none transition-all group"
+                                                    >
+                                                        <span className="text-sm font-bold uppercase tracking-widest">{newProduct.category}</span>
+                                                        <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'category' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                    </button>
+
+                                                    {activeDropdownId === 'category' && (
+                                                        <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
+                                                            <div className="aura-dropdown-content">
+                                                                {categories.map(cat => (
+                                                                    <button
+                                                                        key={cat}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setNewProduct({ ...newProduct, category: cat });
+                                                                            setActiveDropdownId(null);
+                                                                        }}
+                                                                        className={`aura-dropdown-item w-full ${newProduct.category === cat ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                    >
+                                                                        {cat}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price ($)</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.price}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
+                                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition-all"
+                                                    placeholder="0.00"
+                                                    min="0"
+                                                    step="0.01"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency</label>
+                                                <div className="relative">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveDropdownId(activeDropdownId === 'currency' ? null : 'currency')}
+                                                        className="aura-dropdown-toggle w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl flex items-center justify-between focus:ring-2 focus:ring-stone-500/20 outline-none transition-all group"
+                                                    >
+                                                        <span className="text-sm font-bold uppercase tracking-widest">{newProduct.currency}</span>
+                                                        <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'currency' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                    </button>
+
+                                                    {activeDropdownId === 'currency' && (
+                                                        <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
+                                                            <div className="aura-dropdown-content">
+                                                                {[
+                                                                    { code: 'USD', symbol: '$' },
+                                                                    { code: 'EUR', symbol: '€' },
+                                                                    { code: 'GBP', symbol: '£' },
+                                                                    { code: 'JPY', symbol: '¥' },
+                                                                    { code: 'TND', symbol: 'DT' }
+                                                                ].map(curr => (
+                                                                    <button
+                                                                        key={curr.code}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setNewProduct({ ...newProduct, currency: curr.code });
+                                                                            setActiveDropdownId(null);
+                                                                        }}
+                                                                        className={`aura-dropdown-item w-full ${newProduct.currency === curr.code ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                    >
+                                                                        {curr.code} ({curr.symbol})
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Status</label>
+                                                <div className="flex items-center gap-4 h-[50px]">
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={newProduct.inStock}
+                                                            onChange={(e) => setNewProduct({ ...newProduct, inStock: e.target.checked })}
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                                                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                                                            {newProduct.inStock ? 'In Stock' : 'Out of Stock'}
+                                                        </span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price ($)</label>
-                                            <input
-                                                type="number"
-                                                value={newProduct.price}
-                                                onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
-                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition-all"
-                                                placeholder="0.00"
-                                                min="0"
-                                                step="0.01"
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                                            <textarea
+                                                value={newProduct.description}
+                                                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition-all h-32 resize-none"
+                                                placeholder="Describe your product..."
                                                 required
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency</label>
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setActiveDropdownId(activeDropdownId === 'currency' ? null : 'currency')}
-                                                    className="aura-dropdown-toggle w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl flex items-center justify-between focus:ring-2 focus:ring-stone-500/20 outline-none transition-all group"
-                                                >
-                                                    <span className="text-sm font-bold uppercase tracking-widest">{newProduct.currency}</span>
-                                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${activeDropdownId === 'currency' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </button>
+                                </div>
+                                <div className="bg-white dark:bg-neutral-900 rounded-3xl p-8 border border-gray-100 dark:border-neutral-800 shadow-sm">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-neutral-800 text-stone-500 flex items-center justify-center">
+                                            <Package className="w-5 h-5" />
+                                        </div>
+                                        Product Media
+                                    </h3>
+                                    <div className="space-y-6">
+                                        <div className="border-2 border-dashed border-gray-200 dark:border-neutral-800 rounded-2xl p-10 text-center hover:border-stone-500 dark:hover:border-stone-500 transition-colors group cursor-pointer relative">
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleImageChange}
+                                                multiple
+                                                accept="image/*"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            />
+                                            <div className="w-16 h-16 bg-stone-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                                                <svg className="w-8 h-8 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            </div>
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white">Assets Upload</p>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Click to select multiple images (up to 10) • First image will be primary</p>
+                                        </div>
 
-                                                {activeDropdownId === 'currency' && (
-                                                    <div className="aura-dropdown !block top-full left-0 pt-2 w-full z-50">
-                                                        <div className="aura-dropdown-content">
-                                                            {[
-                                                                { code: 'USD', symbol: '$' },
-                                                                { code: 'EUR', symbol: '€' },
-                                                                { code: 'GBP', symbol: '£' },
-                                                                { code: 'JPY', symbol: '¥' },
-                                                                { code: 'TND', symbol: 'DT' }
-                                                            ].map(curr => (
+                                        {/* Image Grid Preview */}
+                                        {imagePreviews.length > 0 && (
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                                                    {imagePreviews.map((preview, index) => {
+                                                        const isNewUpload = preview.startsWith('blob:');
+                                                        // Convert to URL for display: if it's a blob URL, use it directly; otherwise use getImageUrl
+                                                        const previewUrl = isNewUpload ? preview : getImageUrl(preview);
+                                                        return (
+                                                            <div key={index} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-50 dark:bg-black border-2 border-gray-100 dark:border-neutral-800">
+                                                                <img
+                                                                    src={previewUrl}
+                                                                    alt={`Preview ${index + 1}`}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                                {/* Remove button */}
                                                                 <button
-                                                                    key={curr.code}
                                                                     type="button"
                                                                     onClick={() => {
-                                                                        setNewProduct({ ...newProduct, currency: curr.code });
-                                                                        setActiveDropdownId(null);
+                                                                        const newPreviews = [...imagePreviews];
+                                                                        const removedPreview = newPreviews[index];
+                                                                        newPreviews.splice(index, 1);
+                                                                        setImagePreviews(newPreviews);
+
+                                                                        // If it's an existing image (not a blob URL), remove from newProduct.images
+                                                                        // Since we now store paths in imagePreviews (not URLs), we can directly match
+                                                                        if (typeof removedPreview === 'string' && !removedPreview.startsWith('blob:')) {
+                                                                            // Remove the matching image path directly
+                                                                            const newImages = newProduct.images.filter(img => img !== removedPreview);
+                                                                            setNewProduct({ ...newProduct, images: newImages });
+                                                                        }
                                                                     }}
-                                                                    className={`aura-dropdown-item w-full ${newProduct.currency === curr.code ? 'bg-stone-50 dark:bg-neutral-800 text-stone-900 dark:text-white' : ''}`}
+                                                                    className="absolute top-1 right-1 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+                                                                    title="Remove image"
                                                                 >
-                                                                    {curr.code} ({curr.symbol})
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                                                 </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Status</label>
-                                            <div className="flex items-center gap-4 h-[50px]">
-                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={newProduct.inStock}
-                                                        onChange={(e) => setNewProduct({ ...newProduct, inStock: e.target.checked })}
-                                                        className="sr-only peer"
-                                                    />
-                                                    <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                                                    <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
-                                                        {newProduct.inStock ? 'In Stock' : 'Out of Stock'}
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
-                                        <textarea
-                                            value={newProduct.description}
-                                            onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-black border border-gray-200 dark:border-neutral-800 rounded-xl focus:ring-2 focus:ring-stone-500/20 focus:border-stone-500 outline-none transition-all h-32 resize-none"
-                                            placeholder="Describe your product..."
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-neutral-900 rounded-3xl p-8 border border-gray-100 dark:border-neutral-800 shadow-sm">
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-neutral-800 text-stone-500 flex items-center justify-center">
-                                        <Package className="w-5 h-5" />
-                                    </div>
-                                    Product Media
-                                </h3>
-                                <div className="space-y-6">
-                                    <div className="border-2 border-dashed border-gray-200 dark:border-neutral-800 rounded-2xl p-10 text-center hover:border-stone-500 dark:hover:border-stone-500 transition-colors group cursor-pointer relative">
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            onChange={handleImageChange}
-                                            multiple
-                                            accept="image/*"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        />
-                                        <div className="w-16 h-16 bg-stone-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                                            <svg className="w-8 h-8 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                        </div>
-                                        <p className="text-sm font-bold text-gray-900 dark:text-white">Assets Upload</p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Click to select multiple images (up to 10) • First image will be primary</p>
-                                    </div>
-
-                                    {/* Image Grid Preview */}
-                                    {imagePreviews.length > 0 && (
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
-                                                {imagePreviews.map((preview, index) => {
-                                                    const isNewUpload = preview.startsWith('blob:');
-                                                    // Convert to URL for display: if it's a blob URL, use it directly; otherwise use getImageUrl
-                                                    const previewUrl = isNewUpload ? preview : getImageUrl(preview);
-                                                    return (
-                                                        <div key={index} className="relative aspect-square rounded-xl overflow-hidden group bg-gray-50 dark:bg-black border-2 border-gray-100 dark:border-neutral-800">
-                                                            <img
-                                                                src={previewUrl}
-                                                                alt={`Preview ${index + 1}`}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            {/* Remove button */}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newPreviews = [...imagePreviews];
-                                                                    const removedPreview = newPreviews[index];
-                                                                    newPreviews.splice(index, 1);
-                                                                    setImagePreviews(newPreviews);
-
-                                                                    // If it's an existing image (not a blob URL), remove from newProduct.images
-                                                                    // Since we now store paths in imagePreviews (not URLs), we can directly match
-                                                                    if (typeof removedPreview === 'string' && !removedPreview.startsWith('blob:')) {
-                                                                        // Remove the matching image path directly
-                                                                        const newImages = newProduct.images.filter(img => img !== removedPreview);
-                                                                        setNewProduct({ ...newProduct, images: newImages });
-                                                                    }
-                                                                }}
-                                                                className="absolute top-1 right-1 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
-                                                                title="Remove image"
-                                                            >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                            </button>
-                                                            {/* Badges */}
-                                                            <div className="absolute top-1 left-1 flex flex-col gap-1">
+                                                                {/* Badges */}
+                                                                <div className="absolute top-1 left-1 flex flex-col gap-1">
+                                                                    {index === 0 && (
+                                                                        <span className="px-2 py-0.5 bg-stone-900/90 text-white text-[8px] font-black uppercase rounded backdrop-blur-sm shadow-lg">
+                                                                            Primary
+                                                                        </span>
+                                                                    )}
+                                                                    {isNewUpload && index !== 0 && (
+                                                                        <span className="px-2 py-0.5 bg-green-500/90 text-white text-[8px] font-black uppercase rounded backdrop-blur-sm">
+                                                                            New
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {/* Image number */}
+                                                                <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 text-white text-[8px] font-bold rounded backdrop-blur-sm">
+                                                                    #{index + 1}
+                                                                </div>
+                                                                {/* Primary indicator border for first image */}
                                                                 {index === 0 && (
-                                                                    <span className="px-2 py-0.5 bg-stone-900/90 text-white text-[8px] font-black uppercase rounded backdrop-blur-sm shadow-lg">
-                                                                        Primary
-                                                                    </span>
-                                                                )}
-                                                                {isNewUpload && index !== 0 && (
-                                                                    <span className="px-2 py-0.5 bg-green-500/90 text-white text-[8px] font-black uppercase rounded backdrop-blur-sm">
-                                                                        New
-                                                                    </span>
+                                                                    <div className="absolute inset-0 border-2 border-stone-900 dark:border-white rounded-xl pointer-events-none"></div>
                                                                 )}
                                                             </div>
-                                                            {/* Image number */}
-                                                            <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 text-white text-[8px] font-bold rounded backdrop-blur-sm">
-                                                                #{index + 1}
-                                                            </div>
-                                                            {/* Primary indicator border for first image */}
-                                                            {index === 0 && (
-                                                                <div className="absolute inset-0 border-2 border-stone-900 dark:border-white rounded-xl pointer-events-none"></div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+                                                </div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                                    {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} • Drag to reorder (coming soon) • First image is primary
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                                                {imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} • Drag to reorder (coming soon) • First image is primary
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex justify-end pt-4">
-                                    <button
-                                        type="submit"
-                                        disabled={isAdding}
-                                        className="px-8 py-4 bg-stone-900 hover:bg-black text-white rounded-xl font-bold shadow-lg shadow-stone-500/30 hover:shadow-stone-500/50 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                    >
-                                        {isAdding ? (
-                                            <>
-                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                Processing...
-                                            </>
-                                        ) : (
-                                            <>
-                                                {isEditing ? 'Update Product' : 'Publish Product'}
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                            </>
                                         )}
-                                    </button>
+                                    </div>
+                                    <div className="flex justify-end pt-4">
+                                        <button
+                                            type="submit"
+                                            disabled={isAdding}
+                                            className="px-8 py-4 bg-stone-900 hover:bg-black text-white rounded-xl font-bold shadow-lg shadow-stone-500/30 hover:shadow-stone-500/50 transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            {isAdding ? (
+                                                <>
+                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    Processing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {isEditing ? 'Update Product' : 'Publish Product'}
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Right Column: Preview */}
-                        <div className="xl:col-span-1">
-                            <div className="xl:sticky xl:top-6">
-                                <div className="bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-neutral-800 shadow-xl shadow-gray-200/50 dark:shadow-none">
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        Store Preview
-                                    </h3>
-                                    <div className="bg-gray-50 dark:bg-black rounded-2xl p-6 flex justify-center border border-dashed border-gray-200 dark:border-neutral-800">
-                                        <div className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-neutral-800 shadow-lg w-full max-w-[280px] group relative">
-                                            <div className="aspect-[4/5] bg-gray-100 dark:bg-neutral-800 relative overflow-hidden">
-                                                {imagePreviews.length > 0 ? (
-                                                    <img
-                                                        src={imagePreviews[0]}
-                                                        alt="Preview"
-                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-neutral-700">
-                                                        <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                                        <span className="text-xs font-medium">No Image</span>
+                            {/* Right Column: Preview */}
+                            <div className="xl:col-span-1">
+                                <div className="xl:sticky xl:top-6">
+                                    <div className="bg-white dark:bg-neutral-900 rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-neutral-800 shadow-xl shadow-gray-200/50 dark:shadow-none">
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Store Preview
+                                        </h3>
+                                        <div className="bg-gray-50 dark:bg-black rounded-2xl p-6 flex justify-center border border-dashed border-gray-200 dark:border-neutral-800">
+                                            <div className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-neutral-800 shadow-lg w-full max-w-[280px] group relative">
+                                                <div className="aspect-[4/5] bg-gray-100 dark:bg-neutral-800 relative overflow-hidden">
+                                                    {imagePreviews.length > 0 ? (
+                                                        <img
+                                                            src={imagePreviews[0]}
+                                                            alt="Preview"
+                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-neutral-700">
+                                                            <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                            <span className="text-xs font-medium">No Image</span>
+                                                        </div>
+                                                    )}
+                                                    {newProduct.category === 'New Arrivals' && (
+                                                        <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                                                            New
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="p-4">
+                                                    <p className="text-xs font-semibold text-stone-500 mb-1 tracking-wide uppercase">{newProduct.category || 'Category'}</p>
+                                                    <h4 className="font-bold text-gray-900 dark:text-white text-base mb-2 truncate leading-tight">{newProduct.name || 'Product Name'}</h4>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                                            {newProduct.currency} {Number(newProduct.price).toFixed(2)}
+                                                        </span>
                                                     </div>
-                                                )}
-                                                {newProduct.category === 'New Arrivals' && (
-                                                    <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                                                        New
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="p-4">
-                                                <p className="text-xs font-semibold text-stone-500 mb-1 tracking-wide uppercase">{newProduct.category || 'Category'}</p>
-                                                <h4 className="font-bold text-gray-900 dark:text-white text-base mb-2 truncate leading-tight">{newProduct.name || 'Product Name'}</h4>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-lg font-bold text-gray-900 dark:text-white">
-                                                        {newProduct.currency} {Number(newProduct.price).toFixed(2)}
-                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                    )}
                 </div>
             );
         }
@@ -1510,8 +1703,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                             <tr key={user._id} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors group">
                                                 <td className="px-8 py-5">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none">
-                                                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                                        <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none overflow-hidden">
+                                                            {user.avatar ? (
+                                                                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                user.name ? user.name.charAt(0).toUpperCase() : '?'
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <div className="text-sm font-bold text-gray-900 dark:text-white">{user.name}</div>
@@ -1609,8 +1806,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                                 <div key={user._id} className="p-4 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-bold">
-                                                {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                            <div className="w-10 h-10 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-bold overflow-hidden">
+                                                {user.avatar ? (
+                                                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    user.name ? user.name.charAt(0).toUpperCase() : '?'
+                                                )}
                                             </div>
                                             <div>
                                                 <div className="text-sm font-bold text-gray-900 dark:text-white">{user.name}</div>
@@ -1832,6 +2033,355 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 </div>
             );
         }
+        if (activeSection === 'analytics') {
+            // Prepare data for charts
+            const revenueByDate = orders.reduce((acc: any, order) => {
+                const date = new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                acc[date] = (acc[date] || 0) + order.total;
+                return acc;
+            }, {});
+
+            const chartData = Object.entries(revenueByDate).map(([date, revenue]) => ({
+                date,
+                revenue
+            })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(-14); // Last 14 days
+
+            const categoryData = products.reduce((acc: any, product) => {
+                acc[product.category] = (acc[product.category] || 0) + 1;
+                return acc;
+            }, {});
+
+            const pieData = Object.entries(categoryData).map(([name, value]) => ({
+                name,
+                value
+            }));
+
+            // Calculate Real Top Products
+            const productSales: Record<string, { quantity: number, revenue: number }> = {};
+            orders.forEach(order => {
+                order.items.forEach(item => {
+                    const pid = item.productId;
+                    if (!productSales[pid]) {
+                        productSales[pid] = { quantity: 0, revenue: 0 };
+                    }
+                    productSales[pid].quantity += item.quantity;
+                    productSales[pid].revenue += (item.quantity * item.price);
+                });
+            });
+
+            const topProductsData = Object.entries(productSales)
+                .map(([pid, data]) => {
+                    const product = products.find(p => p._id === pid);
+                    return {
+                        name: product?.name || 'Archive Piece',
+                        category: product?.category || 'Special Edition',
+                        quantity: data.quantity,
+                        revenue: data.revenue
+                    };
+                })
+                .sort((a, b) => b.revenue - a.revenue)
+                .slice(0, 5);
+
+            const chartStroke = isDark ? '#FFFFFF' : '#171717';
+            const gridStroke = isDark ? '#333333' : '#F3F4F6';
+            const tickFill = isDark ? '#A3A3A3' : '#6B7280';
+            const COLORS = isDark
+                ? ['#FFFFFF', '#E5E7EB', '#D1D5DB', '#9CA3AF', '#6B7280']
+                : ['#171717', '#404040', '#525252', '#737373', '#A3A3A3'];
+
+            return (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center">
+                                <TrendingUp className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Business Intelligence</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Performance metrics and trend visualization</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {/* Revenue Trends */}
+                        <div className="bg-white dark:bg-neutral-900 p-4 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm">
+                            <h3 className="text-sm md:text-lg font-black uppercase tracking-tighter mb-6 md:mb-8 text-stone-900 dark:text-white">Revenue Velocity</h3>
+                            <div className="h-[200px] md:h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData}>
+                                        <defs>
+                                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={chartStroke} stopOpacity={0.1} />
+                                                <stop offset="95%" stopColor={chartStroke} stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
+                                        <XAxis
+                                            dataKey="date"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fontSize: 10, fontWeight: 'bold', fill: tickFill }}
+                                        />
+                                        <YAxis
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fontSize: 10, fontWeight: 'bold', fill: tickFill }}
+                                            tickFormatter={(value) => `$${value}`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                borderRadius: '16px',
+                                                border: 'none',
+                                                boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                                                backgroundColor: isDark ? '#171717' : '#ffffff',
+                                                color: isDark ? '#ffffff' : '#171717',
+                                                fontSize: '12px',
+                                                fontWeight: 'bold'
+                                            }}
+                                            itemStyle={{ color: isDark ? '#ffffff' : '#171717' }}
+                                            labelStyle={{ color: isDark ? '#ffffff' : '#171717' }}
+                                        />
+                                        <Area type="monotone" dataKey="revenue" stroke={chartStroke} strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Category Distribution */}
+                        <div className="bg-white dark:bg-neutral-900 p-4 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm">
+                            <h3 className="text-sm md:text-lg font-black uppercase tracking-tighter mb-6 md:mb-8 text-stone-900 dark:text-white">Inventory Alpha</h3>
+                            <div className="h-[250px] md:h-[300px] w-full flex items-center justify-center">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {pieData.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{
+                                                borderRadius: '16px',
+                                                border: 'none',
+                                                boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+                                                backgroundColor: isDark ? '#171717' : '#ffffff',
+                                                color: isDark ? '#ffffff' : '#171717',
+                                                fontSize: '12px',
+                                                fontWeight: 'bold'
+                                            }}
+                                            itemStyle={{ color: isDark ? '#ffffff' : '#171717' }}
+                                            labelStyle={{ color: isDark ? '#ffffff' : '#171717' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Products Table */}
+                    <div className="bg-white dark:bg-neutral-900 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                        <div className="p-6 md:p-8 border-b border-gray-50 dark:border-neutral-800">
+                            <h3 className="text-sm md:text-lg font-black uppercase tracking-tighter text-stone-900 dark:text-white">High Velocity Items</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead className="bg-gray-50/50 dark:bg-neutral-800/50">
+                                    <tr>
+                                        <th className="px-4 md:px-8 py-4 md:py-6 text-left text-[9px] md:text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Product</th>
+                                        <th className="hidden sm:table-cell px-8 py-6 text-left text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Category</th>
+                                        <th className="px-4 md:px-8 py-4 md:py-6 text-left text-[9px] md:text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Sales Volume</th>
+                                        <th className="px-4 md:px-8 py-4 md:py-6 text-right text-[9px] md:text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">Revenue contribution</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50 dark:divide-neutral-800">
+                                    {topProductsData.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors text-gray-900 dark:text-white">
+                                            <td className="px-4 md:px-8 py-4 md:py-5 font-bold text-xs md:text-sm">{item.name}</td>
+                                            <td className="hidden sm:table-cell px-8 py-5">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-stone-400 bg-stone-50 dark:bg-neutral-800 px-3 py-1 rounded-full border border-stone-100 dark:border-neutral-700">
+                                                    {item.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 md:px-8 py-4 md:py-5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="hidden xs:block w-12 md:w-24 h-1.5 bg-gray-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-stone-900 dark:bg-white" style={{ width: `${Math.min(100, (item.quantity / (topProductsData[0]?.quantity || 1)) * 100)}%` }}></div>
+                                                    </div>
+                                                    <span className="text-[10px] md:text-xs font-bold text-gray-500">{item.quantity} Units</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 md:px-8 py-4 md:py-5 text-right font-black text-[10px] md:text-sm">
+                                                ${item.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (activeSection === 'coupons') {
+            const handleCreateCoupon = async (e: React.FormEvent) => {
+                e.preventDefault();
+                try {
+                    const response = await axios.post('/api/coupons', newCoupon, authHeader);
+                    setCoupons([...coupons, response.data]);
+                    setNewCoupon({
+                        code: '',
+                        discountPercent: 0,
+                        expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
+                    });
+                    setIsAddingCoupon(false);
+                    toast.success('Promotional architecture authorized');
+                } catch (err: any) {
+                    const msg = err.response?.data?.message || 'Authorization failure: Reference loop';
+                    setError(msg);
+                    toast.error(msg);
+                }
+            };
+
+            const handleDeleteCoupon = async (id: string) => {
+                try {
+                    await axios.delete(`/api/coupons/${id}`, authHeader);
+                    setCoupons(coupons.filter(c => c._id !== id));
+                    toast.success('Privilege deactivated');
+                } catch (err: any) {
+                    const msg = err.response?.data?.message || 'Termination failure';
+                    setError(msg);
+                    toast.error(msg);
+                }
+            };
+
+            return (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center">
+                                <Ticket className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tighter">Privilege Management</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Control promotional architecture and discounts</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setIsAddingCoupon(!isAddingCoupon)}
+                            className="w-full lg:w-auto px-6 py-3 bg-stone-900 dark:bg-white text-white dark:text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
+                        >
+                            {isAddingCoupon ? 'Dismiss Terminal' : 'Generate Privilege Code'}
+                        </button>
+                    </div>
+
+                    {isAddingCoupon && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-stone-50 dark:bg-neutral-800/30 p-8 rounded-[2.5rem] border border-gray-100 dark:border-neutral-800"
+                        >
+                            <form onSubmit={handleCreateCoupon} className="flex flex-col lg:flex-row items-stretch lg:items-end gap-4 md:gap-6">
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[9px] md:text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Privilege Code</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="E.G. AURA_ELITE"
+                                        value={newCoupon.code}
+                                        onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase() })}
+                                        className="w-full bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl md:rounded-2xl px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white uppercase tracking-widest"
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[9px] md:text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Discount Magnitude (%)</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="1"
+                                        max="100"
+                                        value={newCoupon.discountPercent}
+                                        onChange={(e) => setNewCoupon({ ...newCoupon, discountPercent: parseInt(e.target.value) })}
+                                        className="w-full bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl md:rounded-2xl px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white"
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[9px] md:text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Expiration Cycle</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={newCoupon.expiryDate}
+                                        onChange={(e) => setNewCoupon({ ...newCoupon, expiryDate: e.target.value })}
+                                        className="w-full bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl md:rounded-2xl px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-bold focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white"
+                                    />
+                                </div>
+                                <button type="submit" className="px-6 md:px-10 py-3 md:py-4 bg-stone-900 dark:bg-white text-white dark:text-black rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all mb-0.5">
+                                    Authorize Code
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+
+                    <div className="bg-white dark:bg-neutral-900 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 p-4 md:p-8">
+                            {coupons.map((coupon) => (
+                                <div key={coupon._id} className="group relative bg-stone-50 dark:bg-neutral-800/30 rounded-3xl md:rounded-[2rem] p-4 md:p-6 border border-gray-100 dark:border-neutral-800 hover:shadow-xl transition-all overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-3 md:p-4 translate-x-2 translate-y-[-2px] opacity-100 md:opacity-0 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all">
+                                        <button
+                                            onClick={() => handleDeleteCoupon(coupon._id)}
+                                            className="p-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-xl"
+                                        >
+                                            <XCircle className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
+                                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white dark:bg-neutral-900 flex items-center justify-center border border-gray-100 dark:border-neutral-800 text-stone-900 dark:text-white">
+                                            <Ticket className="w-5 h-5 md:w-6 md:h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] md:text-[10px] font-black text-stone-400 uppercase tracking-[0.2em]">Mag: {coupon.discountPercent}%</p>
+                                            <h4 className="font-black text-sm md:text-lg text-gray-900 dark:text-white tracking-widest uppercase truncate max-w-[120px] md:max-w-none">{coupon.code}</h4>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-gray-200/50 dark:border-neutral-800">
+                                        <div className="flex flex-col">
+                                            <span className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-widest">Usage Registry</span>
+                                            <span className="text-[10px] md:text-xs font-bold text-gray-900 dark:text-white mt-0.5">{coupon.useCount || 0} Activations</span>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase tracking-widest">Validity Cycle</span>
+                                            <span className="text-[10px] md:text-xs font-bold text-stone-900 dark:text-white mt-0.5">
+                                                {new Date(coupon.expiryDate).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {coupons.length === 0 && (
+                            <div className="p-20 text-center">
+                                <div className="w-20 h-20 bg-gray-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                                    <Ticket className="w-10 h-10" />
+                                </div>
+                                <h3 className="font-bold text-gray-900 dark:text-white uppercase tracking-tighter">No Active Privileges</h3>
+                                <p className="text-xs text-gray-500 mt-2">Generate a new code to initiate customer incentives</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
 
         // Dashboard (Overview)
         return (
@@ -2011,9 +2561,11 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {navItems.map(item => {
                         const Icon = item.id === 'dashboard' ? LayoutGrid :
-                            item.id === 'addProduct' ? PlusCircle :
-                                item.id === 'orders' ? Package :
-                                    item.id === 'users' ? Users : MessageSquare;
+                            item.id === 'analytics' ? BarChart3 :
+                                item.id === 'coupons' ? Ticket :
+                                    item.id === 'addProduct' ? PlusCircle :
+                                        item.id === 'orders' ? Package :
+                                            item.id === 'users' ? Users : MessageSquare;
                         return (
                             <button
                                 key={item.id}
@@ -2045,8 +2597,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 <div className="p-4 border-t border-gray-100 dark:border-neutral-800 space-y-4">
                     <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none transition-transform hover:rotate-3">
-                                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                            <div className="w-10 h-10 rounded-2xl bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-black shadow-lg shadow-stone-200 dark:shadow-none transition-transform hover:rotate-3 overflow-hidden">
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    user?.name ? user.name.charAt(0).toUpperCase() : 'A'
+                                )}
                             </div>
                             <div className="min-w-0">
                                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest leading-tight">Admin Console</p>
@@ -2088,8 +2644,12 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                     <div className="flex items-center gap-2 sm:gap-4">
                         {/* Mobile Welcome Pill */}
                         <div className="lg:hidden flex items-center gap-2 px-2.5 py-1.5 bg-stone-50 dark:bg-neutral-800 rounded-full border border-stone-100 dark:border-neutral-700 shadow-sm">
-                            <div className="w-5 h-5 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black">
-                                {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
+                            <div className="w-5 h-5 rounded-full bg-stone-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black overflow-hidden">
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    user?.name ? user.name.charAt(0).toUpperCase() : 'A'
+                                )}
                             </div>
                             <span className="text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-tight max-w-[70px] truncate">
                                 {user?.name?.split(' ')[0] || 'Admin'}
@@ -2166,9 +2726,11 @@ const AdminDashboard = ({ token, onLogout }: AdminDashboardProps) => {
                 <div className="flex justify-around items-center h-16 max-w-md mx-auto">
                     {navItems.map(item => {
                         const Icon = item.id === 'dashboard' ? LayoutGrid :
-                            item.id === 'addProduct' ? PlusCircle :
-                                item.id === 'orders' ? Package :
-                                    item.id === 'users' ? Users : MessageSquare;
+                            item.id === 'analytics' ? BarChart3 :
+                                item.id === 'coupons' ? Ticket :
+                                    item.id === 'addProduct' ? PlusCircle :
+                                        item.id === 'orders' ? Package :
+                                            item.id === 'users' ? Users : MessageSquare;
                         const isActive = activeSection === item.id;
                         return (
                             <button

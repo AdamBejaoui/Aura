@@ -147,9 +147,9 @@ const seedDB = async () => {
         await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/aura');
         console.log("Connected to MongoDB...");
 
-        // Optional: Clear existing products
-        // await Product.deleteMany({});
-        // console.log("Cleared existing products.");
+        // Clear existing products
+        await Product.deleteMany({});
+        console.log("Cleared existing products.");
 
         await Product.insertMany(products);
         console.log(`Successfully seeded ${products.length} products!`);

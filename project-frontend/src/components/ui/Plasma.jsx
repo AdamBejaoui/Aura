@@ -44,8 +44,8 @@ void mainImage(out vec4 o, vec2 C) {
   vec3 O, p, S;
 
   bool isMobile = iResolution.y < 800.0;
-  float iterations = isMobile ? 30. : 60.;
-  for (vec2 r = iResolution.xy, Q; ++i < iterations; O += o.w/d*o.xyz) {
+  float iterations = isMobile ? 15. : 20.;
+  for (vec2 r = iResolution.xy, Q; i < iterations; i++, O += o.w/d*o.xyz) {
     p = z*normalize(vec3(C-.5*r,r.y)); 
     p.z -= 4.; 
     S = p;
@@ -91,6 +91,9 @@ export const Plasma = ({
   mouseInteractive = true
 }) => {
   const containerRef = useRef(null);
+  const meshRef = useRef(null);
+  const programRef = useRef(null);
+  const rendererRef = useRef(null);
   const mousePos = useRef({ x: 0, y: 0 });
   const [webglSupported, setWebglSupported] = React.useState(true);
 
@@ -104,7 +107,7 @@ export const Plasma = ({
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current || isMobileDevice) return;
+    if (!containerRef.current) return;
 
     const testCanvas = document.createElement('canvas');
     const testGl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
@@ -113,24 +116,21 @@ export const Plasma = ({
       return;
     }
 
-    const useCustomColor = color ? 1.0 : 0.0;
-    const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
-
-    const directionMultiplier = direction === 'reverse' ? -1.0 : 1.0;
-
     let renderer;
     try {
+      const isMobile = window.innerWidth < 768;
       renderer = new Renderer({
         webgl: 2,
         alpha: true,
         antialias: false,
-        dpr: Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1 : 2)
+        dpr: 1.0 // Cap at 1.0 for maximum performance across browsers
       });
     } catch (e) {
       console.warn('WebGL not supported:', e);
       setWebglSupported(false);
       return;
     }
+
     const gl = renderer.gl;
     const canvas = gl.canvas;
     canvas.style.display = 'block';
@@ -139,6 +139,8 @@ export const Plasma = ({
     containerRef.current.appendChild(canvas);
 
     const geometry = new Triangle(gl);
+    const directionMultiplier = direction === 'reverse' ? -1.0 : 1.0;
+    const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
 
     const program = new Program(gl, {
       vertex: vertex,
@@ -147,7 +149,7 @@ export const Plasma = ({
         iTime: { value: 0 },
         iResolution: { value: new Float32Array([1, 1]) },
         uCustomColor: { value: new Float32Array(customColorRgb) },
-        uUseCustomColor: { value: useCustomColor },
+        uUseCustomColor: { value: color ? 1.0 : 0.0 },
         uSpeed: { value: speed * 0.4 },
         uDirection: { value: directionMultiplier },
         uScale: { value: scale },
@@ -158,22 +160,12 @@ export const Plasma = ({
     });
 
     const mesh = new Mesh(gl, { geometry, program });
-
-    const handleMouseMove = e => {
-      if (!mouseInteractive) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      mousePos.current.x = e.clientX - rect.left;
-      mousePos.current.y = e.clientY - rect.top;
-      const mouseUniform = program.uniforms.uMouse.value;
-      mouseUniform[0] = mousePos.current.x;
-      mouseUniform[1] = mousePos.current.y;
-    };
-
-    if (mouseInteractive) {
-      containerRef.current.addEventListener('mousemove', handleMouseMove);
-    }
+    meshRef.current = mesh;
+    programRef.current = program;
+    rendererRef.current = renderer;
 
     const setSize = () => {
+      if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const width = Math.max(1, Math.floor(rect.width));
       const height = Math.max(1, Math.floor(rect.height));
@@ -191,18 +183,7 @@ export const Plasma = ({
     const t0 = performance.now();
     const loop = t => {
       let timeValue = (t - t0) * 0.001;
-      if (direction === 'pingpong') {
-        const pingpongDuration = 10;
-        const segmentTime = timeValue % pingpongDuration;
-        const isForward = Math.floor(timeValue / pingpongDuration) % 2 === 0;
-        const u = segmentTime / pingpongDuration;
-        const smooth = u * u * (3 - 2 * u);
-        const pingpongTime = isForward ? smooth * pingpongDuration : (1 - smooth) * pingpongDuration;
-        program.uniforms.uDirection.value = 1.0;
-        program.uniforms.iTime.value = pingpongTime;
-      } else {
-        program.uniforms.iTime.value = timeValue;
-      }
+      program.uniforms.iTime.value = timeValue;
       renderer.render({ scene: mesh });
       raf = requestAnimationFrame(loop);
     };
@@ -211,19 +192,53 @@ export const Plasma = ({
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-      if (mouseInteractive && containerRef.current) {
-        containerRef.current.removeEventListener('mousemove', handleMouseMove);
-      }
-      try {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        containerRef.current?.removeChild(canvas);
-      } catch {
-        console.warn('Canvas already removed from container');
+      if (containerRef.current && canvas.parentNode === containerRef.current) {
+        containerRef.current.removeChild(canvas);
       }
     };
+  }, []);
+
+  // Handle uniform updates without re-initializing renderer
+  useEffect(() => {
+    if (!programRef.current) return;
+    const program = programRef.current;
+
+    // Update color
+    const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
+    program.uniforms.uCustomColor.value.set(customColorRgb);
+    program.uniforms.uUseCustomColor.value = color ? 1.0 : 0.0;
+
+    // Update other props
+    program.uniforms.uSpeed.value = speed * 0.4;
+    program.uniforms.uDirection.value = direction === 'reverse' ? -1.0 : 1.0;
+    program.uniforms.uScale.value = scale;
+    program.uniforms.uOpacity.value = opacity;
+    program.uniforms.uMouseInteractive.value = mouseInteractive ? 1.0 : 0.0;
+
   }, [color, speed, direction, scale, opacity, mouseInteractive]);
 
-  if (!webglSupported || isMobileDevice) {
+  useEffect(() => {
+    const handleMouseMove = e => {
+      if (!mouseInteractive || !containerRef.current || !programRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const mouseUniform = programRef.current.uniforms.uMouse.value;
+      mouseUniform[0] = x;
+      mouseUniform[1] = y;
+    };
+
+    if (mouseInteractive && containerRef.current) {
+      containerRef.current.addEventListener('mousemove', handleMouseMove);
+    }
+    return () => {
+      if (containerRef.current) {
+        containerRef.current.removeEventListener('mousemove', handleMouseMove);
+      }
+    };
+  }, [mouseInteractive]);
+
+  if (!webglSupported) {
     return (
       <div className="w-full h-full overflow-hidden relative bg-luxury-gradient opacity-50" />
     );

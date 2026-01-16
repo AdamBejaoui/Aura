@@ -4,14 +4,20 @@ import { Toaster, toast } from 'sonner';
 import axios from "axios";
 import { useAuthStore } from "./store/authStore";
 import { useThemeStore } from "./store/themeStore";
-import Home from "./pages/Home";
-import VerifyEmail from "./components/features/auth/VerifyEmail";
-import AdminDashboard from "./pages/admin/Dashboard";
+import { lazy, Suspense } from 'react';
+import Navbar from "./components/layout/Navbar";
 import MobileNav from "./components/layout/MobileNav";
+import LoadingScreen from "./components/common/LoadingScreen";
+
+// Lazy Load Pages
+const Home = lazy(() => import("./pages/Home"));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const VerifyEmail = lazy(() => import("./components/features/auth/VerifyEmail"));
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
+      <Navbar />
       {children}
       <MobileNav />
     </>
@@ -37,6 +43,44 @@ const AppContent = () => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
+  // Handle OAuth callback (Google login redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const userStr = params.get('user');
+    const error = params.get('error');
+
+    if (error) {
+      toast.error('Authentication failed. Please try again.');
+      window.history.replaceState({}, '', '/');
+      return;
+    }
+
+    if (token) {
+      try {
+        const { login, checkAuth } = useAuthStore.getState();
+
+        if (userStr) {
+          const userData = JSON.parse(decodeURIComponent(userStr));
+          login(userData, token);
+          toast.success(`Welcome, ${userData.name}!`);
+        } else {
+          // If no user data in URL, just login with token and fetch user
+          login({ id: '', name: '', email: '', role: 'customer' } as any, token);
+          checkAuth().then(() => {
+            const updatedUser = useAuthStore.getState().user;
+            if (updatedUser) toast.success(`Welcome, ${updatedUser.name}!`);
+          });
+        }
+      } catch (err) {
+        console.error('OAuth callback error:', err);
+        toast.error('Login failed. Please try again.');
+      } finally {
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, []);
+
   // Sync authStore token with adminToken when admin user is logged in
   useEffect(() => {
     if (isAuthenticated && (user?.role === 'admin' || user?.role === 'co-admin') && authToken && authToken !== adminToken) {
@@ -57,29 +101,44 @@ const AppContent = () => {
 
   return (
     <>
-      <Toaster position="top-center" richColors />
-      <Routes>
-        <Route path="/" element={<MainLayout><Home /></MainLayout>} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route
-          path="/admin"
-          element={
-            adminToken && (user?.role === 'admin' || user?.role === 'co-admin') ? (
-              <AdminDashboard
-                token={adminToken}
-                onLogout={() => {
-                  handleAdminLogout();
-                  toast.success('Logged out successfully');
-                  navigate('/');
-                }}
-              />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          className: 'toast-custom',
+          style: {
+            background: 'var(--toast-bg)',
+            color: 'var(--toast-color)',
+            border: '1px solid var(--toast-border)',
+          },
+        }}
+        className="lg:!top-4 !bottom-24 lg:!bottom-auto"
+        richColors
+      />
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/" element={<MainLayout><Home /></MainLayout>} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route
+            path="/admin"
+            element={
+              adminToken && (user?.role === 'admin' || user?.role === 'co-admin') ? (
+                <AdminDashboard
+                  token={adminToken}
+                  onLogout={() => {
+                    handleAdminLogout();
+                    toast.success('Logged out successfully');
+                    navigate('/');
+                  }}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 };
