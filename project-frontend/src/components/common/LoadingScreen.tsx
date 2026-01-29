@@ -1,25 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import Plasma from '../ui/Plasma';
-import { useThemeStore } from '../../store/themeStore';
 
 const LoadingScreen: React.FC<{ message?: string }> = ({ message = "Syncing with Archives..." }) => {
-    const { theme } = useThemeStore();
-    const isDark = theme === 'dark';
-
     return (
         <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-gray-50 dark:bg-black transition-colors duration-700">
-            {/* Ambient Background - Disabled on mobile for performance */}
-            <div className="absolute inset-0 pointer-events-none opacity-40 hidden md:block">
-                <Plasma
-                    color={isDark ? '#ffffff' : '#000000'}
-                    speed={0.4}
-                    direction="forward"
-                    scale={1.5}
-                    opacity={isDark ? 0.2 : 0.15}
-                    mouseInteractive={false}
-                />
-            </div>
 
             <div className="relative z-10 flex flex-col items-center">
                 {/* Minimalist Aura Star Animation */}

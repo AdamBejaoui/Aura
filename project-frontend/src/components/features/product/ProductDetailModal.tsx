@@ -53,6 +53,18 @@ const ProductDetailModal = ({
     }
   }, [product]);
 
+  // Body Scroll Lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   const images = localProduct?.images || [];
 
   const getImageUrl = (imagePath: string) => {

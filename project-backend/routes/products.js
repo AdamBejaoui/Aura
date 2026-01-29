@@ -2,6 +2,7 @@
 const express = require('express');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const Waitlist = require('../models/Waitlist');
 const { authenticateToken } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -136,7 +137,10 @@ router.get('/migrate-reviews', async (req, res) => {
 // Get all products (public) with filtering and sorting
 router.get('/', async (req, res) => {
   try {
-    const { category, minPrice, maxPrice, inStock, sort } = req.query;
+    const { category, minPrice, maxPrice, inStock, sort, search, page: pageQuery, limit: limitQuery } = req.query;
+    const page = parseInt(pageQuery) || 1;
+    const limit = parseInt(limitQuery) || 12;
+    const skip = (page - 1) * limit;
 
     // Build query
     const query = {};
@@ -155,25 +159,26 @@ router.get('/', async (req, res) => {
       query.inStock = true;
     }
 
-    // Build sort options
-    let sortOptions = {};
-    switch (sort) {
-      case 'price_asc':
-        sortOptions = { price: 1 };
-        break;
-      case 'price_desc':
-        sortOptions = { price: -1 };
-        break;
-      case 'rating':
-        sortOptions = { rating: -1 };
-        break;
-      case 'newest':
-      default:
-        sortOptions = { createdAt: -1 };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
     }
 
-    const products = await Product.find(query).sort(sortOptions);
-    res.json(products);
+    const [products, total] = await Promise.all([
+      Product.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Product.countDocuments(query)
+    ]);
+
+    res.json({
+      products,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -256,7 +261,7 @@ router.patch('/:id', authenticateToken, upload.array('images', 10), async (req, 
     // Handle image update - merge existing with new uploads
     const oldProduct = await Product.findById(req.params.id);
     let finalImages = [];
-    
+
     // Preserve existing images if provided
     if (req.body.existingImages) {
       try {
@@ -271,17 +276,17 @@ router.patch('/:id', authenticateToken, upload.array('images', 10), async (req, 
       // If no existingImages provided, keep all old images
       finalImages = [...oldProduct.images];
     }
-    
+
     // Add new uploaded files
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       const newImageUrls = req.files.map(file => `/uploads/${file.filename}`);
       finalImages = [...finalImages, ...newImageUrls];
     }
-    
+
     // Only update images if we have at least one
     if (finalImages.length > 0) {
       updateData.images = finalImages;
-      
+
       // Delete old image files that are no longer in the list (if they were local uploads)
       if (oldProduct && oldProduct.images) {
         oldProduct.images.forEach(imgPath => {
@@ -307,6 +312,28 @@ router.patch('/:id', authenticateToken, upload.array('images', 10), async (req, 
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // --- Waitlist Automation Trigger ---
+    if (!oldProduct.inStock && product.inStock) {
+      console.log(`[WAITLIST] Signal detected: Product ${product.name} is now back in stock.`);
+      try {
+        const waitingUsers = await Waitlist.find({ productId: product._id, notified: false });
+        if (waitingUsers.length > 0) {
+          console.log(`[WAITLIST] Dispatching restock signals to ${waitingUsers.length} users.`);
+
+          // In a real app, you would send emails here.
+          // For now, we simulate and update the records.
+          for (const entry of waitingUsers) {
+            console.log(`[SIGNAL] Notification sent to: ${entry.email} regarding ${product.name}`);
+            entry.notified = true;
+            await entry.save();
+          }
+          console.log(`[WAITLIST] All signals dispatched successfully.`);
+        }
+      } catch (waitlistError) {
+        console.error('[WAITLIST] Signal failure:', waitlistError);
+      }
     }
 
     res.json(product);

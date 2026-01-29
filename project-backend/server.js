@@ -50,6 +50,7 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin/waitlist', require('./routes/admin-waitlist'));
 app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/waitlist', require('./routes/waitlist'));
 

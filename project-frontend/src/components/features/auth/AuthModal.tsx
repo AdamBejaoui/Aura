@@ -47,6 +47,18 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
     const passwordStrength = getPasswordStrength(formData.password);
 
+    // Body Scroll Lock
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
     // Timer Logic
     useEffect(() => {
         let interval: any;

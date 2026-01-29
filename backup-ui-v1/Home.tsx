@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,
     Heart,
@@ -13,21 +13,26 @@ import {
     MoonStar,
     ArrowRight,
     List,
-    X,
+    X
 } from 'lucide-react';
 import LoadingScreen from '../components/common/LoadingScreen';
 import { toast } from 'sonner';
 import axios from "axios";
-import Magnetic from '../components/common/Magnetic';
-import ScrambleText from '../components/common/ScrambleText';
+import Plasma from "../components/ui/Plasma";
+import ProductDetailModal from "../components/features/product/ProductDetailModal";
+import CartCheckout from "../components/features/cart/CartCheckout";
+import { useCartStore } from "../store/cartStore";
 import Footer from "../components/layout/Footer";
 import FilterSidebar from "../components/common/FilterSidebar";
+import WishlistSidebar from "../components/features/wishlist/WishlistSidebar";
+import AuthModal from "../components/features/auth/AuthModal";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import { useWishlistStore } from "../store/wishlistStore";
 import { useAuthStore } from "../store/authStore";
 import { useUIStore } from "../store/uiStore";
-import { useCartStore } from "../store/cartStore";
 import { useCurrencyStore } from "../store/currencyStore";
+import OrderHistorySidebar from "../components/features/order/OrderHistorySidebar";
+import AccountSidebar from "../components/features/auth/AccountSidebar";
 import { Product } from "../types";
 
 const API_BASE = '';
@@ -134,107 +139,6 @@ const ProductImageCarousel = ({ images, productName }: { images: string[]; produ
     );
 };
 
-const ProductCard = ({ product, onOpenModal, onAddToCart }: { product: Product; onOpenModal: (p: Product) => void; onAddToCart: (p: Product) => void }) => {
-    const { toggleItem } = useWishlistStore();
-    const wishlistedIds = useWishlistStore(state => state.items.map((item: Product) => item.id));
-    const { formatPrice } = useCurrencyStore();
-
-    // 3D Tilt Logic
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
-    const rotateX = useTransform(y, [-100, 100], [10, -10]);
-    const rotateY = useTransform(x, [-100, 100], [-10, 10]);
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const width = rect.width;
-        const height = rect.height;
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const xPct = (mouseX / width - 0.5) * 200;
-        const yPct = (mouseY / height - 0.5) * 200;
-        x.set(xPct);
-        y.set(yPct);
-    };
-
-    const handleMouseLeave = () => {
-        x.set(0);
-        y.set(0);
-    };
-
-    return (
-        <motion.div
-            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            onClick={() => onOpenModal(product)}
-            className="group/card relative cursor-pointer"
-        >
-            {/* Editorial Archive Number */}
-            <div className="absolute -top-10 left-0 flex items-center gap-3 opacity-0 group-hover/card:opacity-100 transition-all duration-700 translate-y-4 group-hover/card:translate-y-0">
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-stone-400">ARCH-{String(product.id).slice(-3)}</span> {/* Using product.id for unique number, adjust as needed */}
-                <div className="w-8 h-[1px] bg-stone-200 dark:bg-neutral-800" />
-            </div>
-
-            <div className={`relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-stone-50 dark:bg-neutral-900 border border-stone-100 dark:border-neutral-800 shadow-xl transition-all duration-700 group-hover/card:shadow-2xl group-hover/card:-translate-y-2 will-change-transform isolation-auto ${!product.inStock ? 'grayscale' : ''}`}>
-                <ProductImageCarousel images={product.images} productName={product.name} />
-
-                {!product.inStock && (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                        <div className="px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/20 transform -rotate-12 scale-110">
-                            <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white">Archived</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* Hover Reveals: Metadata & CTA */}
-                <div className="absolute inset-x-0 bottom-0 p-6 translate-y-full group-hover/card:translate-y-0 transition-transform duration-700 ease-[0.16,1,0.3,1] z-20">
-                    <div className="p-4 bg-white/90 dark:bg-black/90 backdrop-blur-2xl rounded-2xl border border-white/20 flex items-center justify-between shadow-2xl">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-stone-400">Status</span>
-                            <span className={`text-[10px] font-black uppercase tracking-wide ${product.inStock ? 'text-green-500' : 'text-stone-500'}`}>
-                                {product.inStock ? 'Ready for Archive' : 'Archived / Sold Out'}
-                            </span>
-                        </div>
-                        <motion.button
-                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                            onClick={(e) => { e.stopPropagation(); if (product.inStock) onAddToCart(product); }}
-                            className={`p-3 rounded-xl ${product.inStock ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-stone-100 text-stone-400 cursor-not-allowed'}`}
-                            disabled={!product.inStock}
-                        >
-                            <ArrowRight className="w-4 h-4" />
-                        </motion.button>
-                    </div>
-                </div>
-
-                <motion.button
-                    whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); toggleItem(product); }}
-                    className={`absolute top-6 right-6 z-10 p-3 rounded-2xl backdrop-blur-xl transition-all ${wishlistedIds.includes(product.id) ? 'bg-black text-white' : 'bg-white/80 dark:bg-neutral-900/80 text-stone-500 border border-white/20'}`}
-                >
-                    <Heart className={`w-5 h-5 ${wishlistedIds.includes(product.id) ? 'fill-current' : ''}`} />
-                </motion.button>
-
-                {/* Category Badge */}
-                <div className="absolute top-6 left-6 px-4 py-1.5 bg-black/80 backdrop-blur-md rounded-full border border-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white">{product.category}</span>
-                </div>
-            </div>
-
-            <div className="mt-8 px-2 space-y-2">
-                <div className="flex items-start justify-between">
-                    <div className="flex flex-col gap-1">
-                        <h3 className="font-black text-stone-900 dark:text-white text-lg tracking-tighter uppercase leading-none">{product.name}</h3>
-                        <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mt-1">Studio Archives Phase 01</span>
-                    </div>
-                    <div className="text-xl font-black text-stone-900 dark:text-white tracking-tighter leading-none">{formatPrice(product.price)}</div>
-                </div>
-            </div>
-        </motion.div>
-    );
-};
-
 function Home() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("");
@@ -243,13 +147,17 @@ function Home() {
     const showcaseScrollRef = useRef<HTMLDivElement>(null);
     const productsRef = useRef<HTMLDivElement>(null);
 
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<(typeof categories)[number]>("All");
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
 
     // Filters State
     const [filters, setFilters] = useState({
@@ -272,12 +180,12 @@ function Home() {
         });
     };
 
-    const { setMobileSearchOpen, setProductDetailOpen, setSelectedProduct, toggleCart, toggleFilter, isFilterOpen } = useUIStore();
+    const { setMobileSearchOpen, setProductDetailOpen } = useUIStore();
     const { formatPrice } = useCurrencyStore();
-    const { logout } = useAuthStore();
-    const { addItem, setConfirmationMessage } = useCartStore();
-
-    // Removed unused local states and sidebars (moved to App.tsx)
+    const { logout, isProfileOpen, isOrdersOpen, isAuthOpen, setProfileOpen, setOrdersOpen, setAuthOpen } = useAuthStore();
+    const { items, addItem, checkoutOpen, toggleCheckout, updateQuantity, setConfirmationMessage, confirmationMessage } = useCartStore();
+    const { toggleItem, isOpen: isWishlistOpen } = useWishlistStore();
+    const wishlistedIds = useWishlistStore(state => state.items.map((item: Product) => item.id));
 
     const fetchProducts = async () => {
         try {
@@ -290,8 +198,7 @@ function Home() {
             if (filters.sort) params.append('sort', filters.sort);
 
             const response = await axios.get(`${API_BASE}/api/products?${params.toString()}`);
-            const productsData = Array.isArray(response.data.products) ? response.data.products : (Array.isArray(response.data) ? response.data : []);
-            const formattedProducts = productsData.map((product: any) => ({
+            const formattedProducts = response.data.map((product: any) => ({
                 id: product._id,
                 name: product.name,
                 category: product.category,
@@ -316,7 +223,7 @@ function Home() {
         }
     };
 
-    useEffect(() => { fetchProducts(); }, [activeCategory, filters]);
+    useEffect(() => { fetchProducts(); }, [activeCategory]);
 
     // Listen for mobile search trigger
     useEffect(() => {
@@ -396,12 +303,13 @@ function Home() {
 
     const handleOpenModal = (product: Product) => {
         setSelectedProduct(product);
+        setIsModalOpen(true);
         setProductDetailOpen(true);
     };
 
     const handleAddToCart = (product: Product) => {
         addItem(product);
-        toggleCart(true);
+        toggleCheckout(true);
         setConfirmationMessage(null);
     };
 
@@ -409,17 +317,13 @@ function Home() {
     if (error) return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black"><p className="text-gray-600 dark:text-gray-400">{error}</p></div>;
 
     return (
-        <div className="min-h-screen text-black dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black luxury-grain scroll-smooth">
+        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black luxury-grain scroll-smooth">
             {/* HYPER-LUXE HERO: Kinetic Typography */}
             <section className="relative h-screen flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 z-0"><Plasma /></div>
                 <div className="container relative z-10 px-6 md:px-10">
                     <div className="max-w-[1400px] mx-auto">
-                        <motion.div
-                            initial={{ opacity: 0, y: 100 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                            className="relative"
-                        >
+                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }} className="relative">
                             <h1 className="text-[14vw] md:text-[11vw] font-black leading-[0.8] tracking-tighter uppercase italic text-black dark:text-white relative">
                                 <motion.span
                                     initial={{ x: -100, opacity: 0 }}
@@ -427,7 +331,7 @@ function Home() {
                                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
                                     className="inline-block"
                                 >
-                                    <ScrambleText text="Aura" />
+                                    Aura
                                 </motion.span>
                                 <br />
                                 <motion.span
@@ -436,7 +340,7 @@ function Home() {
                                     transition={{ duration: 1.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                                     className="ml-[10vw] text-outline text-black dark:text-white inline-block"
                                 >
-                                    <ScrambleText text="Studio" />
+                                    Studio
                                 </motion.span>
 
                                 {/* Architectural "Frame" Lines */}
@@ -453,22 +357,18 @@ function Home() {
                                     className="absolute -top-10 -left-10 h-[1px] bg-black/10 dark:bg-white/10 hidden md:block"
                                 />
                             </h1>
-                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1, duration: 1 }} className="absolute -bottom-10 right-0 md:right-20 max-w-xs text-right">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="absolute -bottom-10 right-0 md:right-20 max-w-xs text-right">
                                 <p className="text-[9px] md:text-xs font-black uppercase tracking-[0.4em] text-stone-500 dark:text-stone-400">Architectural Archives<br />Phase 001 - Redefined</p>
                             </motion.div>
                         </motion.div>
                         <div className="mt-40 flex flex-col md:flex-row items-end justify-between gap-10">
-                            <Magnetic strength={0.3}>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => productsRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                                    className="px-12 py-5 bg-black dark:bg-white text-white dark:text-black rounded-full font-black text-xs uppercase tracking-[0.4em] hover:shadow-[0_0_30px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all flex items-center gap-4 group"
-                                >
-                                    Enter Archives
-                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-                                </motion.button>
-                            </Magnetic>
+                            <motion.button
+                                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                onClick={() => productsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                                className="group relative px-10 py-5 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-[0.4em] overflow-hidden transition-all hover:shadow-2xl"
+                            >
+                                <span className="relative z-10 flex items-center gap-3">Explore Archives <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" /></span>
+                            </motion.button>
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }} className="hidden md:flex flex-col items-center gap-4">
                                 <span className="text-[10px] uppercase tracking-[0.5em] text-stone-400 rotate-90 mb-10 origin-bottom-right">Scroll</span>
                                 <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="w-[1px] h-20 bg-stone-200 dark:bg-neutral-800" />
@@ -487,19 +387,11 @@ function Home() {
             <section className="py-32 overflow-hidden bg-stone-50/50 dark:bg-neutral-900/20 backdrop-blur-3xl border-y border-stone-100 dark:border-neutral-800">
                 <div className="max-w-[1400px] mx-auto px-6 md:px-10 mb-24">
                     <div className="flex flex-col md:flex-row items-end justify-between gap-8">
-                        <motion.div
-                            initial={{ opacity: 0, x: -50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                            className="flex flex-col gap-4"
-                        >
+                        <div className="flex flex-col gap-4">
                             <span className="text-[10px] font-black uppercase tracking-[0.5em] text-stone-400">Featured</span>
-                            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-[0.8] text-black dark:text-white">
-                                <ScrambleText text="The Editorial" />
-                            </h2>
-                        </motion.div>
-                        <div className="max-w-xs text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] leading-relaxed text-right md:mb-4 relative">
+                            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-[0.8] text-black dark:text-white">The<br /><span className="text-outline text-black dark:text-white">Editorial</span></h2>
+                        </div>
+                        <p className="max-w-xs text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] leading-relaxed text-right md:mb-4 relative">
                             <motion.span
                                 initial={{ opacity: 0 }}
                                 whileInView={{ opacity: 1 }}
@@ -514,7 +406,7 @@ function Home() {
                                 transition={{ duration: 1.5, delay: 0.5 }}
                                 className="absolute -top-4 right-0 h-[1px] bg-stone-200 dark:bg-neutral-800 hidden md:block"
                             />
-                        </div>
+                        </p>
                     </div>
                 </div>
 
@@ -525,10 +417,7 @@ function Home() {
                     {products.slice(0, 5).map((product, idx) => (
                         <motion.div
                             key={`showcase-${product.id}`}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.8, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                            whileHover={{ y: -10 }}
                             onClick={() => handleOpenModal(product)}
                             className="flex-shrink-0 w-[85vw] md:w-[60vw] lg:w-[45vw] aspect-[16/9] relative rounded-[3rem] overflow-hidden group/showcase cursor-pointer snap-center shadow-2xl"
                         >
@@ -537,9 +426,9 @@ function Home() {
                                 alt={product.name}
                                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover/showcase:scale-110"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                            <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-end pointer-events-none">
+                            <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-end">
                                 <div className="flex items-end justify-between">
                                     <div className="flex flex-col gap-2">
                                         <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">Archive {String(idx + 1).padStart(3, '0')}</span>
@@ -644,29 +533,73 @@ function Home() {
                                             <h3 className="text-4xl md:text-6xl font-black text-stone-900 dark:text-white uppercase tracking-tighter leading-none">{category}</h3>
                                         </div>
                                     </div>
-                                    <motion.div
-                                        initial={{ opacity: 0 }}
-                                        whileInView={{ opacity: 1 }}
-                                        viewport={{ once: true, margin: "-100px" }}
-                                        transition={{ staggerChildren: 0.1 }}
-                                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-10 gap-y-24"
-                                    >
-                                        {productsInCategory.map((product) => (
-                                            <motion.div
-                                                key={product.id}
-                                                initial={{ opacity: 0, y: 30 }}
-                                                whileInView={{ opacity: 1, y: 0 }}
-                                                viewport={{ once: true }}
-                                                transition={{ duration: 0.6, ease: "easeOut" }}
-                                            >
-                                                <ProductCard
-                                                    product={product}
-                                                    onOpenModal={handleOpenModal}
-                                                    onAddToCart={handleAddToCart}
-                                                />
-                                            </motion.div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-10 gap-y-24">
+                                        {productsInCategory.map((product, pIdx) => (
+                                            <div key={product.id} onClick={() => handleOpenModal(product)} className="group/card relative cursor-pointer">
+                                                {/* Editorial Archive Number */}
+                                                <div className="absolute -top-10 left-0 flex items-center gap-3 opacity-0 group-hover/card:opacity-100 transition-all duration-700 translate-y-4 group-hover/card:translate-y-0">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-stone-400">ARCH-{String(pIdx + 1).padStart(3, '0')}</span>
+                                                    <div className="w-8 h-[1px] bg-stone-200 dark:bg-neutral-800" />
+                                                </div>
+
+                                                <div className={`relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-stone-50 dark:bg-neutral-900 border border-stone-100 dark:border-neutral-800 shadow-xl transition-all duration-700 group-hover/card:shadow-2xl group-hover/card:-translate-y-2 will-change-transform isolation-auto ${!product.inStock ? 'grayscale' : ''}`}>
+                                                    <ProductImageCarousel images={product.images} productName={product.name} />
+
+                                                    {!product.inStock && (
+                                                        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                                                            <div className="px-6 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/20 transform -rotate-12 scale-110">
+                                                                <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white">Archived</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Hover Reveals: Metadata & CTA */}
+                                                    <div className="absolute inset-x-0 bottom-0 p-6 translate-y-full group-hover/card:translate-y-0 transition-transform duration-700 ease-[0.16,1,0.3,1] z-20">
+                                                        <div className="p-4 bg-white/90 dark:bg-black/90 backdrop-blur-2xl rounded-2xl border border-white/20 flex items-center justify-between shadow-2xl">
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-stone-400">Status</span>
+                                                                <span className={`text-[10px] font-black uppercase tracking-wide ${product.inStock ? 'text-green-500' : 'text-stone-500'}`}>
+                                                                    {product.inStock ? 'Ready for Archive' : 'Archived / Sold Out'}
+                                                                </span>
+                                                            </div>
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                                onClick={(e) => { e.stopPropagation(); if (product.inStock) handleAddToCart(product); }}
+                                                                className={`p-3 rounded-xl ${product.inStock ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-stone-100 text-stone-400 cursor-not-allowed'}`}
+                                                                disabled={!product.inStock}
+                                                            >
+                                                                <ArrowRight className="w-4 h-4" />
+                                                            </motion.button>
+                                                        </div>
+                                                    </div>
+
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                        onClick={(e) => { e.stopPropagation(); toggleItem(product); }}
+                                                        className={`absolute top-6 right-6 z-10 p-3 rounded-2xl backdrop-blur-xl transition-all ${wishlistedIds.includes(product.id) ? 'bg-black text-white' : 'bg-white/80 dark:bg-neutral-900/80 text-stone-500 border border-white/20'}`}
+                                                    >
+                                                        <Heart className={`w-5 h-5 ${wishlistedIds.includes(product.id) ? 'fill-current' : ''}`} />
+                                                    </motion.button>
+
+                                                    {/* Category Badge */}
+                                                    <div className="absolute top-6 left-6 px-4 py-1.5 bg-black/80 backdrop-blur-md rounded-full border border-white/10 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 flex items-center gap-2">
+                                                        <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white">{product.category}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-8 px-2 space-y-2">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex flex-col gap-1">
+                                                            <h3 className="font-black text-stone-900 dark:text-white text-lg tracking-tighter uppercase leading-none">{product.name}</h3>
+                                                            <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mt-1">Studio Archives Phase 01</span>
+                                                        </div>
+                                                        <div className="text-xl font-black text-stone-900 dark:text-white tracking-tighter leading-none">{formatPrice(product.price)}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </motion.div>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -676,18 +609,38 @@ function Home() {
 
             <Footer />
 
+            {/* Sidebars & Modals */}
             <AnimatePresence>
-                {isFilterOpen && (
-                    <FilterSidebar isOpen={isFilterOpen} onClose={() => toggleFilter(false)} filters={filters} onFilterChange={handleFilterChange} onClearFilters={clearFilters} />
+                {isProfileOpen && <AccountSidebar isOpen={isProfileOpen} onClose={() => setProfileOpen(false)} />}
+                {isOrdersOpen && <OrderHistorySidebar isOpen={isOrdersOpen} onClose={() => setOrdersOpen(false)} />}
+                {isWishlistOpen && <WishlistSidebar />}
+            </AnimatePresence>
+
+            <ProductDetailModal
+                product={selectedProduct} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setProductDetailOpen(false); }}
+            />
+
+            <AnimatePresence>
+                {checkoutOpen && (
+                    <CartCheckout isOpen={checkoutOpen} items={items} confirmationMessage={confirmationMessage} onClose={() => toggleCheckout(false)} onUpdateQuantity={updateQuantity} onSubmitOrder={() => { }} />
                 )}
             </AnimatePresence>
+
+            <AnimatePresence>
+                {isFilterOpen && (
+                    <FilterSidebar isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} filters={filters} onFilterChange={handleFilterChange} onClearFilters={clearFilters} />
+                )}
+            </AnimatePresence>
+
+            <AuthModal isOpen={isAuthOpen} onClose={() => setAuthOpen(false)} />
+
 
             <ConfirmationModal
                 isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)}
                 onConfirm={() => { logout(); navigate('/'); setShowLogoutConfirm(false); toast.success('Logged out'); }}
                 title="Logout" message="Are you sure?" isDestructive={true}
             />
-        </div >
+        </div>
     );
 }
 

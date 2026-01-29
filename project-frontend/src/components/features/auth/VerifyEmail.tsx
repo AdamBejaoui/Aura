@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../../store/authStore';
-import Plasma from '../../ui/Plasma';
 
 const VerifyEmail = () => {
     const [searchParams] = useSearchParams();
@@ -37,10 +36,7 @@ const VerifyEmail = () => {
     }, [token, login, navigate]);
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center relative overflow-hidden font-inter">
-            <div className="absolute inset-0 opacity-10 dark:opacity-30">
-                <Plasma color={typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? "#ffffff" : "#000000"} />
-            </div>
+        <div className="min-h-screen text-black dark:text-white flex items-center justify-center relative overflow-hidden font-inter">
 
             <div className="bg-white dark:bg-neutral-900 border border-stone-200 dark:border-neutral-800 p-10 md:p-12 rounded-3xl max-w-md w-full text-center relative z-10 shadow-premium">
                 {status === 'verifying' && (

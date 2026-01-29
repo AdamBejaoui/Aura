@@ -22,5 +22,7 @@ const waitlistSchema = new mongoose.Schema({
 
 // Index to prevent duplicate entries for same user/product
 waitlistSchema.index({ email: 1, productId: 1 }, { unique: true });
+waitlistSchema.index({ productId: 1 });
+waitlistSchema.index({ notified: 1 });
 
 module.exports = mongoose.model('Waitlist', waitlistSchema);

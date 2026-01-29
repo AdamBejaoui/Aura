@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, Package, Truck, ArrowRight, ShoppingBag, Globe } from 'lucide-react';
 import axios from 'axios';
 import { useCurrencyStore } from '../store/currencyStore';
-import Plasma from '../components/ui/Plasma';
 
 const OrderSuccess = () => {
     const { id } = useParams();
@@ -40,10 +39,7 @@ const OrderSuccess = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-black text-stone-900 dark:text-white relative overflow-hidden flex items-center justify-center p-4">
-            <div className="absolute inset-0 pointer-events-none opacity-40">
-                <Plasma color="#ffffff" speed={0.3} scale={2} opacity={0.5} />
-            </div>
+        <div className="min-h-screen text-stone-900 dark:text-white relative overflow-hidden flex items-center justify-center p-4">
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}

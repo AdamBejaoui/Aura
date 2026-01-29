@@ -1,41 +1,26 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import { AnimatePresence } from 'framer-motion'; // Framer Motion
-import PageTransition from './components/layout/PageTransition'; // Page Transition Wrapper
-import GlobalSidebars from './components/layout/GlobalSidebars'; // Global Overlays
 import axios from "axios";
 import { useAuthStore } from "./store/authStore";
 import { useThemeStore } from "./store/themeStore";
+import { lazy, Suspense } from 'react';
 import { motion, useScroll, useTransform } from "framer-motion";
-import CustomCursor from './components/layout/CustomCursor';
-import KineticLines from './components/layout/KineticLines';
 import Navbar from "./components/layout/Navbar";
 import MobileNav from "./components/layout/MobileNav";
 import LoadingScreen from "./components/common/LoadingScreen";
-import Plasma from './components/ui/Plasma';
 
 // Lazy Load Pages
 const Home = lazy(() => import("./pages/Home"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const VerifyEmail = lazy(() => import("./components/features/auth/VerifyEmail"));
 
-
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const { scrollYProgress } = useScroll();
   const scaleX = useTransform(scrollYProgress, [0, 1], [0, 1]);
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
 
   return (
     <>
-      <div className="fixed inset-0 z-[-1] pointer-events-none">
-        <div className="absolute inset-0 bg-gray-50 dark:bg-black transition-colors duration-700" /> {/* Base Layer */}
-        <Plasma /> {/* Smoke Layer */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-cover mix-blend-overlay" /> {/* Noise Layer */}
-      </div>
-      <CustomCursor />
-      <KineticLines />
       <Navbar />
       <motion.div
         className="fixed top-0 left-0 right-0 h-[2px] bg-black dark:bg-white z-[50] origin-left"
@@ -50,7 +35,6 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
 const AppContent = () => {
   const { user, token: authToken, isAuthenticated, logout: authLogout } = useAuthStore();
   const navigate = useNavigate();
-  const location = useLocation(); // Hook for Framer Motion key
   const [adminToken, setAdminToken] = useState<string | null>(() => {
     const token = localStorage.getItem("adminToken");
     if (token) {
@@ -115,22 +99,13 @@ const AppContent = () => {
     }
   }, [isAuthenticated, user, authToken, adminToken]);
 
-  const handleAdminLogout = useCallback(() => {
+  const handleAdminLogout = () => {
     // Clear both admin token and regular auth
     setAdminToken(null);
     localStorage.removeItem("adminToken");
     authLogout(); // Also logout from authStore
     delete axios.defaults.headers.common["Authorization"];
-  }, [authLogout]);
-
-  const onAdminLogout = useCallback(() => {
-    toast.success('Logged out successfully');
-    navigate('/', { replace: true });
-    // Delay clearing tokens slightly to allow the exit animation to start
-    setTimeout(() => {
-      handleAdminLogout();
-    }, 50);
-  }, [navigate, handleAdminLogout]);
+  };
 
   return (
     <>
@@ -149,32 +124,29 @@ const AppContent = () => {
         richColors
       />
       <Suspense fallback={<LoadingScreen />}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname.split('/')[1] || 'root'}>
-            <Route path="/" element={<MainLayout><PageTransition><Home /></PageTransition></MainLayout>} />
-            <Route path="/verify-email" element={<PageTransition><VerifyEmail /></PageTransition>} />
-            <Route
-              path="/admin"
-              element={
-                adminToken && (user?.role === 'admin' || user?.role === 'co-admin') ? (
-                  <PageTransition>
-                    <AdminDashboard
-                      token={adminToken}
-                      onLogout={onAdminLogout}
-                    />
-                  </PageTransition>
-                ) : (
-                  <Navigate to="/" replace />
-                )
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AnimatePresence>
+        <Routes>
+          <Route path="/" element={<MainLayout><Home /></MainLayout>} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route
+            path="/admin"
+            element={
+              adminToken && (user?.role === 'admin' || user?.role === 'co-admin') ? (
+                <AdminDashboard
+                  token={adminToken}
+                  onLogout={() => {
+                    handleAdminLogout();
+                    toast.success('Logged out successfully');
+                    navigate('/');
+                  }}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </Suspense>
-
-      {/* Global Sidebars (Overlay) */}
-      <GlobalSidebars />
     </>
   );
 };

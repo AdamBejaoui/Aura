@@ -1,250 +1,143 @@
-import React from 'react';
-import { useEffect, useRef } from 'react';
-import { Renderer, Program, Mesh, Triangle } from 'ogl';
+import React, { useRef, useEffect } from 'react';
+import { useThemeStore } from '../../store/themeStore';
 
-const hexToRgb = hex => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return [1, 0.5, 0.2];
-  return [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255];
-};
+const Smoke = () => {
+  const canvasRef = useRef(null);
+  const { theme } = useThemeStore();
+  const isDark = theme === 'dark';
 
-const vertex = `#version 300 es
-precision highp float;
-in vec2 position;
-in vec2 uv;
-out vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0.0, 1.0);
-}
-`;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-const fragment = `#version 300 es
-precision highp float;
-uniform vec2 iResolution;
-uniform float iTime;
-uniform vec3 uCustomColor;
-uniform float uUseCustomColor;
-uniform float uSpeed;
-uniform float uDirection;
-uniform float uScale;
-uniform float uOpacity;
-uniform vec2 uMouse;
-uniform float uMouseInteractive;
-out vec4 fragColor;
+    const ctx = canvas.getContext('2d', { alpha: true }); // optimize for alpha
+    if (!ctx) return;
 
-void mainImage(out vec4 o, vec2 C) {
-  vec2 center = iResolution.xy * 0.5;
-  C = (C - center) / uScale + center;
-  
-  vec2 mouseOffset = (uMouse - center) * 0.0002;
-  C += mouseOffset * length(C - center) * step(0.5, uMouseInteractive);
-  
-  float i, d, z, T = iTime * uSpeed * uDirection;
-  vec3 O, p, S;
+    let animationFrameId;
+    let particles = [];
+    let width = 0;
+    let height = 0;
+    let smokeImage = null; // Cache for the gradient
 
-  bool isMobile = iResolution.y < 800.0;
-  float iterations = isMobile ? 15. : 20.;
-  for (vec2 r = iResolution.xy, Q; i < iterations; i++, O += o.w/d*o.xyz) {
-    p = z*normalize(vec3(C-.5*r,r.y)); 
-    p.z -= 4.; 
-    S = p;
-    d = p.y-T;
-    
-    p.x += .4*(1.+p.y)*sin(d + p.x*0.1)*cos(.34*d + p.x*0.05); 
-    Q = p.xz *= mat2(cos(p.y+vec4(0,11,33,0)-T)); 
-    z+= d = abs(sqrt(length(Q*Q)) - .25*(5.+S.y))/3.+8e-4; 
-    o = 1.+sin(S.y+p.z*.5+S.z-length(S-p)+vec4(2,1,0,8));
-  }
-  
-  o.xyz = tanh(O/1e4);
-}
+    // Configuration
+    const particleColor = isDark ? '255, 255, 255' : '0, 0, 0';
+    // Reduced opacity slightly since we might have overlaps, but keeping it visible
+    const baseOpacity = isDark ? 0.15 : 0.12;
 
-bool finite1(float x){ return !(isnan(x) || isinf(x)); }
-vec3 sanitize(vec3 c){
-  return vec3(
-    finite1(c.r) ? c.r : 0.0,
-    finite1(c.g) ? c.g : 0.0,
-    finite1(c.b) ? c.b : 0.0
+    // Performance: Render at lower resolution. Smoke is blurry, so we don't need 1:1 pixels.
+    // 0.6 is a good balance between perf and quality for background effects.
+    const quality = 0.6;
+
+    // 1. Create a pre-rendered offscreen canvas for the smoke puff
+    // This is the biggest performance boost vs drawing gradients every frame
+    const createSmokePuff = () => {
+      const size = 256; // Standard size for the texture
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = size;
+      offCanvas.height = size;
+      const offCtx = offCanvas.getContext('2d');
+
+      const gradient = offCtx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      gradient.addColorStop(0, `rgba(${particleColor}, 1)`); // Solid center (alpha handled by globalAlpha)
+      gradient.addColorStop(1, `rgba(${particleColor}, 0)`);
+
+      offCtx.fillStyle = gradient;
+      offCtx.beginPath();
+      offCtx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      offCtx.fill();
+      return offCanvas;
+    };
+
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      // Set canvas internal resolution lower than screen size for performance
+      canvas.width = width * quality;
+      canvas.height = height * quality;
+
+      // Re-generate cache when color changes (theme)
+      smokeImage = createSmokePuff();
+
+      initParticles();
+    };
+
+    const createParticle = (reset = false) => {
+      // Sizes are relative to logical screen pixels, we scale when drawing
+      const size = Math.random() * 300 + 200;
+      return {
+        x: Math.random() * width,
+        y: reset ? Math.random() * height : height + size,
+        size: size,
+        vx: (Math.random() - 0.5) * 0.5, // gentle drift
+        vy: -(Math.random() * 0.4 + 0.1), // gentle rise
+        life: Math.random() * 100,
+        maxLife: 300 + Math.random() * 300,
+        alpha: Math.random() * baseOpacity
+      };
+    };
+
+    const initParticles = () => {
+      // Moderate particle count - sufficient for coverage without killing CPU
+      const particleCount = 20;
+      particles = [];
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(createParticle(true));
+      }
+    };
+
+    const update = () => {
+      // Scaling logic: We draw on a smaller canvas, but want coordinates to match screen space
+      // So we clear the whole smaller canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Save context to apply global scaling for resolution
+      ctx.save();
+      ctx.scale(quality, quality);
+
+      if (smokeImage) {
+        particles.forEach((p, index) => {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          // Wrap/Reset logic
+          if (p.x < -p.size) p.x = width + p.size;
+          if (p.x > width + p.size) p.x = -p.size;
+
+          if (p.y < -p.size) {
+            particles[index] = createParticle(false);
+            particles[index].y = height + p.size;
+          }
+
+          // Use globalAlpha for fading, much faster than regenerating gradients
+          ctx.globalAlpha = p.alpha;
+          // Draw cached image. 
+          // Centered drawing: image is 256x256, we draw it at p.size
+          ctx.drawImage(smokeImage, p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        });
+      }
+      ctx.restore();
+
+      animationFrameId = requestAnimationFrame(update);
+    };
+
+    window.addEventListener('resize', resize);
+    resize();
+    update();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isDark]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 block w-full h-full pointer-events-none"
+      // Ensure it stretches to fill the container regardless of internal resolution
+      style={{ width: '100%', height: '100%' }}
+    />
   );
-}
-
-void main() {
-  vec4 o = vec4(0.0);
-  mainImage(o, gl_FragCoord.xy);
-  vec3 rgb = sanitize(o.rgb);
-  
-  float intensity = (rgb.r + rgb.g + rgb.b) / 3.0;
-  vec3 customColor = intensity * uCustomColor;
-  vec3 finalColor = mix(rgb, customColor, step(0.5, uUseCustomColor));
-  
-  float alpha = length(rgb) * uOpacity;
-  fragColor = vec4(finalColor, alpha);
-}`;
-
-export const Plasma = ({
-  color = '#ffffff',
-  speed = 1,
-  direction = 'forward',
-  scale = 1,
-  opacity = 1,
-  mouseInteractive = true
-}) => {
-  const containerRef = useRef(null);
-  const meshRef = useRef(null);
-  const programRef = useRef(null);
-  const rendererRef = useRef(null);
-  const mousePos = useRef({ x: 0, y: 0 });
-  const [webglSupported, setWebglSupported] = React.useState(true);
-
-  const [isMobileDevice, setIsMobileDevice] = React.useState(false);
-
-  useEffect(() => {
-    setIsMobileDevice(window.innerWidth < 768);
-    const handleResize = () => setIsMobileDevice(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const testCanvas = document.createElement('canvas');
-    const testGl = testCanvas.getContext('webgl2') || testCanvas.getContext('webgl');
-    if (!testGl) {
-      setWebglSupported(false);
-      return;
-    }
-
-    let renderer;
-    try {
-      const isMobile = window.innerWidth < 768;
-      renderer = new Renderer({
-        webgl: 2,
-        alpha: true,
-        antialias: false,
-        dpr: 1.0 // Cap at 1.0 for maximum performance across browsers
-      });
-    } catch (e) {
-      console.warn('WebGL not supported:', e);
-      setWebglSupported(false);
-      return;
-    }
-
-    const gl = renderer.gl;
-    const canvas = gl.canvas;
-    canvas.style.display = 'block';
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    containerRef.current.appendChild(canvas);
-
-    const geometry = new Triangle(gl);
-    const directionMultiplier = direction === 'reverse' ? -1.0 : 1.0;
-    const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
-
-    const program = new Program(gl, {
-      vertex: vertex,
-      fragment: fragment,
-      uniforms: {
-        iTime: { value: 0 },
-        iResolution: { value: new Float32Array([1, 1]) },
-        uCustomColor: { value: new Float32Array(customColorRgb) },
-        uUseCustomColor: { value: color ? 1.0 : 0.0 },
-        uSpeed: { value: speed * 0.4 },
-        uDirection: { value: directionMultiplier },
-        uScale: { value: scale },
-        uOpacity: { value: opacity },
-        uMouse: { value: new Float32Array([0, 0]) },
-        uMouseInteractive: { value: mouseInteractive ? 1.0 : 0.0 }
-      }
-    });
-
-    const mesh = new Mesh(gl, { geometry, program });
-    meshRef.current = mesh;
-    programRef.current = program;
-    rendererRef.current = renderer;
-
-    const setSize = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const width = Math.max(1, Math.floor(rect.width));
-      const height = Math.max(1, Math.floor(rect.height));
-      renderer.setSize(width, height);
-      const res = program.uniforms.iResolution.value;
-      res[0] = gl.drawingBufferWidth;
-      res[1] = gl.drawingBufferHeight;
-    };
-
-    const ro = new ResizeObserver(setSize);
-    ro.observe(containerRef.current);
-    setSize();
-
-    let raf = 0;
-    const t0 = performance.now();
-    const loop = t => {
-      let timeValue = (t - t0) * 0.001;
-      program.uniforms.iTime.value = timeValue;
-      renderer.render({ scene: mesh });
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      if (containerRef.current && canvas.parentNode === containerRef.current) {
-        containerRef.current.removeChild(canvas);
-      }
-    };
-  }, []);
-
-  // Handle uniform updates without re-initializing renderer
-  useEffect(() => {
-    if (!programRef.current) return;
-    const program = programRef.current;
-
-    // Update color
-    const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
-    program.uniforms.uCustomColor.value.set(customColorRgb);
-    program.uniforms.uUseCustomColor.value = color ? 1.0 : 0.0;
-
-    // Update other props
-    program.uniforms.uSpeed.value = speed * 0.4;
-    program.uniforms.uDirection.value = direction === 'reverse' ? -1.0 : 1.0;
-    program.uniforms.uScale.value = scale;
-    program.uniforms.uOpacity.value = opacity;
-    program.uniforms.uMouseInteractive.value = mouseInteractive ? 1.0 : 0.0;
-
-  }, [color, speed, direction, scale, opacity, mouseInteractive]);
-
-  useEffect(() => {
-    const handleMouseMove = e => {
-      if (!mouseInteractive || !containerRef.current || !programRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const mouseUniform = programRef.current.uniforms.uMouse.value;
-      mouseUniform[0] = x;
-      mouseUniform[1] = y;
-    };
-
-    if (mouseInteractive && containerRef.current) {
-      containerRef.current.addEventListener('mousemove', handleMouseMove);
-    }
-    return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('mousemove', handleMouseMove);
-      }
-    };
-  }, [mouseInteractive]);
-
-  if (!webglSupported) {
-    return (
-      <div className="w-full h-full overflow-hidden relative bg-luxury-gradient opacity-50" />
-    );
-  }
-
-  return <div ref={containerRef} className="w-full h-full overflow-hidden relative" />;
 };
 
-export default Plasma;
+export default Smoke;

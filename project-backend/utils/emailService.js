@@ -168,4 +168,92 @@ const sendVerificationEmail = async (email, code) => {
   }
 };
 
-module.exports = { sendOrderNotification, sendVerificationEmail };
+const sendStatusUpdateEmail = async (order) => {
+  if (!transporter || !order.email) return false;
+
+  const statusMessages = {
+    'confirmed': {
+      title: 'Order Confirmed',
+      message: 'Great news! Your order has been confirmed and is being prepared.',
+      icon: '✨'
+    },
+    'shipped': {
+      title: 'Order Shipped',
+      message: 'Your package is on its way! It has been handed over to our delivery partner.',
+      icon: '🚚'
+    },
+    'delivered': {
+      title: 'Order Delivered',
+      message: 'Your Aura package has been delivered. We hope you love your new pieces!',
+      icon: '🎁'
+    },
+    'cancelled': {
+      title: 'Order Cancelled',
+      message: 'Your order has been cancelled. If you have any questions, please contact our support.',
+      icon: '❗'
+    }
+  };
+
+  const config = statusMessages[order.status];
+  if (!config) return false;
+
+  try {
+    const mailOptions = {
+      from: `"Aura Store" <${process.env.EMAIL_USER}>`,
+      to: order.email,
+      subject: `${config.icon} ${config.title} - Order #${order._id.toString().slice(-6)}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #171717; margin: 0; padding: 0; background-color: #f9f9f9; }
+            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e5e5; }
+            .header { background: #000000; color: #ffffff; padding: 40px 20px; text-align: center; }
+            .content { padding: 40px 30px; text-align: center; }
+            .status-badge { display: inline-block; padding: 8px 16px; background: #f3f4f6; border-radius: 20px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; }
+            .order-number { color: #888; font-size: 14px; margin-bottom: 10px; }
+            .footer { padding: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #e5e5e5; }
+            .button { display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; letter-spacing: 4px; font-weight: 300;">AURA</h1>
+            </div>
+            <div class="content">
+              <div class="order-number">Order #${order._id.toString().toUpperCase().slice(-8)}</div>
+              <div class="status-badge" style="color: ${order.status === 'cancelled' ? '#ef4444' : '#000'}">
+                ${order.status}
+              </div>
+              <h2 style="margin: 0 0 20px 0;">${config.title}</h2>
+              <p style="color: #444; margin-bottom: 30px;">${config.message}</p>
+              
+              <div style="background: #fdfdfd; border: 1px solid #f0f0f0; border-radius: 8px; padding: 20px; text-align: left;">
+                <h4 style="margin: 0 0 10px 0; font-size: 12px; color: #888; text-transform: uppercase;">Shipping Address</h4>
+                <p style="margin: 0; font-size: 14px; font-weight: 500;">${order.fullName}</p>
+                <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">${order.address}</p>
+              </div>
+
+              <a href="#" class="button">Track Order</a>
+            </div>
+            <div class="footer">
+              &copy; ${new Date().getFullYear()} Aura Essence. All rights reserved.
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Status update email sent to ${order.email} for status: ${order.status}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send status update email:', error);
+    return false;
+  }
+};
+
+module.exports = { sendOrderNotification, sendVerificationEmail, sendStatusUpdateEmail };

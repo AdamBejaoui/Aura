@@ -4,11 +4,16 @@ import { motion } from 'framer-motion';
 import { useAuthStore } from '../../../store/authStore';
 import { Package, Calendar, X, ShoppingBag } from 'lucide-react';
 import { useCurrencyStore } from '../../../store/currencyStore';
+import ArchivalTracking from './ArchivalTracking';
 
 interface Order {
     _id: string;
     items: {
-        productId: string;
+        productId: {
+            _id: string;
+            name: string;
+            images: string[];
+        } | string;
         quantity: number;
         price: number;
     }[];
@@ -38,7 +43,7 @@ const OrderHistorySidebar = ({ isOpen, onClose }: OrderHistorySidebarProps) => {
         else setIsRefreshing(true);
         try {
             const response = await axios.get('/api/orders/my-orders');
-            setOrders(response.data);
+            setOrders(response.data.orders || response.data);
             setError(null);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to fetch orders');
@@ -164,6 +169,44 @@ const OrderHistorySidebar = ({ isOpen, onClose }: OrderHistorySidebarProps) => {
                                             <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border ${status.class}`}>
                                                 {status.label}
                                             </span>
+                                        </div>
+
+                                        <ArchivalTracking status={order.status} />
+
+                                        {/* Product Preview */}
+                                        <div className="mt-8 pt-6 border-t border-stone-100 dark:border-neutral-800">
+                                            <div className="flex gap-4">
+                                                {order.items.length > 0 && order.items[0].productId && typeof order.items[0].productId !== 'string' ? (
+                                                    <>
+                                                        <div className="w-16 h-20 bg-stone-50 dark:bg-neutral-800 rounded-lg overflow-hidden flex-shrink-0 border border-stone-200 dark:border-neutral-800">
+                                                            <img
+                                                                src={order.items[0].productId.images?.[0] || ''}
+                                                                alt={order.items[0].productId.name || 'Product'}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 flex flex-col justify-center">
+                                                            <p className="text-[10px] font-black text-black dark:text-white uppercase tracking-tight line-clamp-1">
+                                                                {order.items[0].productId.name || 'Product no longer available'}
+                                                            </p>
+                                                            {order.items.length > 1 && (
+                                                                <p className="text-[8px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+                                                                    + {order.items.length - 1} more items
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col justify-center">
+                                                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-tight">
+                                                            {order.items.length} Pieces • Archive Reference Only
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {order.status === 'pending' && (

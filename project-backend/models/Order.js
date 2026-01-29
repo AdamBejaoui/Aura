@@ -66,9 +66,19 @@ const orderSchema = new mongoose.Schema({
   discountAmount: {
     type: Number,
     default: 0
-  }
+  },
+  notificationHistory: [{
+    status: String,
+    sentAt: { type: Date, default: Date.now },
+    type: { type: String, default: 'email' }
+  }]
 }, {
   timestamps: true
 });
+
+orderSchema.index({ userId: 1 });
+orderSchema.index({ email: 1 });
+orderSchema.index({ status: 1 });
+orderSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

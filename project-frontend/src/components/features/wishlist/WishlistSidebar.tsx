@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { X, ShoppingBag, Trash2, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWishlistStore } from "../../../store/wishlistStore";
 import { useCartStore } from "../../../store/cartStore";
+import { useUIStore } from "../../../store/uiStore";
 
 const formatCurrency = (value: number, currency: string = 'USD') =>
     new Intl.NumberFormat("en-US", {
@@ -11,13 +13,23 @@ const formatCurrency = (value: number, currency: string = 'USD') =>
     }).format(value);
 
 const WishlistSidebar = () => {
-    const { items, toggleWishlist, removeItem } = useWishlistStore();
-    const { addItem, toggleCheckout } = useCartStore();
+    const { items, removeItem } = useWishlistStore();
+    const { toggleWishlist } = useUIStore();
+    const { addItem } = useCartStore();
+    const { toggleCart } = useUIStore();
+
+    // Body scroll locking
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, []);
 
     const handleAddToCart = (product: any) => {
         addItem(product);
-        toggleWishlist();
-        toggleCheckout(true);
+        toggleWishlist(false);
+        toggleCart(true);
     };
 
     return (
@@ -28,7 +40,7 @@ const WishlistSidebar = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/20 backdrop-blur-md"
-                onClick={toggleWishlist}
+                onClick={() => toggleWishlist(false)}
             />
 
             {/* Sidebar */}
@@ -53,7 +65,7 @@ const WishlistSidebar = () => {
                         </h2>
                     </div>
                     <button
-                        onClick={toggleWishlist}
+                        onClick={() => toggleWishlist(false)}
                         className="p-3 text-stone-400 hover:text-black dark:hover:text-white bg-stone-50 dark:bg-neutral-800 rounded-xl border border-stone-200 dark:border-neutral-800 transition-all hover:scale-110 hover:rotate-90 duration-300"
                     >
                         <X className="w-4 h-4" />
@@ -72,7 +84,7 @@ const WishlistSidebar = () => {
                                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2">Start saving your favorite pieces</p>
                             </div>
                             <button
-                                onClick={toggleWishlist}
+                                onClick={() => toggleWishlist(false)}
                                 className="px-8 py-4 bg-stone-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl hover:scale-105 transition-all"
                             >
                                 Start Shopping
@@ -134,7 +146,7 @@ const WishlistSidebar = () => {
                 {items.length > 0 && (
                     <div className="pt-10 pb-8 pb-safe md:pb-0">
                         <button
-                            onClick={toggleWishlist}
+                            onClick={() => toggleWishlist(false)}
                             className="w-full py-5 bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-premium hover:scale-[1.02] active:scale-[0.98] transition-all"
                         >
                             Return to Store

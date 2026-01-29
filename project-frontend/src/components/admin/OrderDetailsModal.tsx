@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, MapPin, Package, Calendar, CreditCard, Hash, Ruler } from 'lucide-react';
+import { X, User, Phone, MapPin, Package, Calendar, CreditCard, Hash, Ruler, ShieldCheck } from 'lucide-react';
+
+import ArchivalTracking from '../features/order/ArchivalTracking';
 
 interface OrderItem {
     productId: string;
@@ -26,6 +28,11 @@ interface Order {
     status: string;
     paymentMethod?: string;
     createdAt: string;
+    notificationHistory?: Array<{
+        status: string;
+        sentAt: string;
+        type: string;
+    }>;
 }
 
 interface OrderDetailsModalProps {
@@ -95,49 +102,57 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                             {/* Customer & Shipping Info */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex items-start gap-4 p-4 bg-stone-50 dark:bg-neutral-800/50 rounded-2xl border border-stone-100 dark:border-neutral-800">
                                         <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-100 dark:border-amber-900/30">
                                             <User className="w-5 h-5" />
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Customer Info</p>
-                                            <p className="text-sm font-bold text-stone-900 dark:text-white">{order.fullName}</p>
-                                            {order.email && <p className="text-[10px] text-stone-400 font-medium">{order.email}</p>}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Customer Profile</p>
+                                            <p className="text-sm font-bold text-stone-900 dark:text-white truncate">{order.fullName}</p>
+                                            {order.email && <p className="text-[10px] text-stone-400 font-medium truncate">{order.email}</p>}
                                         </div>
                                     </div>
 
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex items-start gap-4 p-4 bg-stone-50 dark:bg-neutral-800/50 rounded-2xl border border-stone-100 dark:border-neutral-800">
                                         <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 border border-blue-100 dark:border-blue-900/30">
                                             <Phone className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Phone Number</p>
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Contact Terminal</p>
                                             <p className="text-sm font-bold text-stone-900 dark:text-white">{order.phone}</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-6">
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex items-start gap-4 p-4 bg-stone-50 dark:bg-neutral-800/50 rounded-2xl border border-stone-100 dark:border-neutral-800">
                                         <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-100 dark:border-emerald-900/30">
                                             <MapPin className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Shipping Address</p>
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Archive Destination</p>
                                             <p className="text-sm font-bold text-stone-900 dark:text-white leading-relaxed">{order.address}</p>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex items-start gap-4 p-4 bg-stone-50 dark:bg-neutral-800/50 rounded-2xl border border-stone-100 dark:border-neutral-800">
                                         <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0 border border-purple-100 dark:border-purple-900/30">
                                             <Ruler className="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Preferred Size</p>
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Sizing Spec</p>
                                             <p className="text-sm font-bold text-stone-900 dark:text-white uppercase">{order.size || 'N/A'}</p>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Visual Order Tracking - Premium "Aura" Experience */}
+                            <div className="bg-white dark:bg-neutral-900 rounded-[2rem] p-8 border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                                <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.25em] mb-8 flex items-center gap-2">
+                                    <Hash className="w-3 h-3" /> Archival Path
+                                </h4>
+                                <ArchivalTracking status={order.status as any} />
                             </div>
 
                             {/* Order Summary */}
@@ -209,6 +224,34 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                                     <span className="text-[9px] font-black text-stone-900 dark:text-white uppercase tracking-widest">{order.status}</span>
                                 </div>
                             </div>
+
+                            {/* Notification Journal */}
+                            {order.notificationHistory && order.notificationHistory.length > 0 && (
+                                <div className="space-y-4 pt-4">
+                                    <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.25em] px-4 flex items-center gap-2">
+                                        Notification Journal
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {order.notificationHistory.map((log, i) => (
+                                            <div key={i} className="flex items-center justify-between p-4 bg-white dark:bg-neutral-900 rounded-2xl border border-stone-100 dark:border-neutral-800">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30">
+                                                        <ShieldCheck className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-stone-900 dark:text-white uppercase tracking-tight">Status Update: {log.status}</p>
+                                                        <p className="text-[9px] text-stone-400 font-medium">Dispatched via {log.type}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] font-bold text-stone-400">{new Date(log.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p className="text-[9px] font-bold text-stone-400">{new Date(log.sentAt).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer / Actions */}

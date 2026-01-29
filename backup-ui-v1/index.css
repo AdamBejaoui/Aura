@@ -22,7 +22,7 @@ textarea:focus-visible {
 }
 
 body {
-  @apply bg-gray-50 dark:bg-black text-stone-900 dark:text-white transition-colors duration-300;
+  /* standard body styles */
 }
 
 /* Mobile App Specific Locks */

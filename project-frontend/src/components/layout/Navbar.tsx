@@ -1,26 +1,30 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-    Heart,
     Sun,
     Moon,
-    Package,
-    LogOut,
     User,
+    Package,
     LayoutDashboard,
     ShoppingCart,
     Globe,
-    ChevronDown
+    ChevronDown,
+    Menu,
+    Sparkles,
+    Heart,
+    LogOut
 } from "lucide-react";
 import { useCartStore } from "../../store/cartStore";
 import { useWishlistStore } from "../../store/wishlistStore";
-import { useCurrencyStore, Currency } from "../../store/currencyStore";
 import { useAuthStore } from "../../store/authStore";
 import { useThemeStore } from "../../store/themeStore";
+import { useUIStore } from '../../store/uiStore';
+import { useCurrencyStore, Currency } from "../../store/currencyStore";
+import Magnetic from '../common/Magnetic';
 
 const Navbar = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showCurrencyMenu, setShowCurrencyMenu] = useState(false);
 
@@ -28,8 +32,6 @@ const Navbar = () => {
         user,
         isAuthenticated,
         logout,
-        setProfileOpen,
-        setOrdersOpen,
         setAuthOpen,
     } = useAuthStore();
 
@@ -38,12 +40,14 @@ const Navbar = () => {
 
     const { currency, setCurrency } = useCurrencyStore();
 
-    const { items: cartItems, toggleCheckout } = useCartStore();
+    const { items: cartItems } = useCartStore();
     const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
-    const { items: wishlistItems, toggleWishlist: toggleWishlistSidebar } = useWishlistStore();
+    const { items: wishlistItems } = useWishlistStore();
 
     const isAdmin = user?.role === "admin" || user?.role === "co-admin";
+
+    const { toggleNav, toggleCart, toggleWishlist, toggleProfile, toggleOrders } = useUIStore();
 
     // Click outside to close dropdowns
     useEffect(() => {
@@ -66,35 +70,55 @@ const Navbar = () => {
         <header className="fixed top-0 left-0 right-0 z-[40] px-4 sm:px-6 lg:px-10 py-5 pt-safe md:pt-6">
             <div className="max-w-7xl mx-auto flex justify-between items-center premium-blur bg-white/70 dark:bg-black/70 backdrop-blur-2xl rounded-[2.5rem] border border-stone-100/50 dark:border-neutral-800/50 px-4 sm:px-8 py-4 shadow-2xl shadow-stone-200/50 dark:shadow-none">
                 {/* LEFT: Star + Aura */}
-                <div
-                    className="flex items-center gap-4 group cursor-pointer"
-                    onClick={() => {
-                        if (location.pathname === "/") {
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                        } else {
-                            navigate("/");
-                        }
-                    }}
-                >
-                    <div className="relative w-6 h-6 bg-black dark:bg-white [clip-path:polygon(50%_0%,70%_30%,100%_50%,70%_70%,50%_100%,30%_70%,0%_50%,30%_30%)] before:content-[''] before:absolute before:inset-0 before:bg-black dark:before:bg-white before:blur-xl before:opacity-40 group-hover:scale-125 transition-all duration-700"></div>
-                    <span className="text-xl sm:text-2xl font-black tracking-[-0.08em] text-stone-900 dark:text-white uppercase italic">
-                        Aura
-                    </span>
-                </div>
+                <Magnetic strength={0.2}>
+                    <Link to="/" className="relative group flex items-center gap-2">
+                        <motion.div
+                            whileHover={{ rotate: 180 }}
+                            transition={{ duration: 0.6, ease: "circOut" }}
+                            className="relative w-8 h-8 flex items-center justify-center border border-black dark:border-white rounded-full overflow-hidden"
+                        >
+                            <Sparkles className="w-4 h-4 text-black dark:text-white" />
+                            {/* Animated "frame" lines */}
+                            <motion.div
+                                initial={{ width: 0 }}
+                                whileHover={{ width: '100%' }}
+                                className="absolute top-0 left-0 h-[1px] bg-black dark:bg-white"
+                            />
+                            <motion.div
+                                initial={{ height: 0 }}
+                                whileHover={{ height: '100%' }}
+                                className="absolute top-0 left-0 w-[1px] bg-black dark:bg-white"
+                            />
+                        </motion.div>
+                        <div className="flex flex-col text-black dark:text-white">
+                            <span className="text-xl font-black tracking-tighter uppercase leading-none relative">
+                                Aura
+                                <motion.span
+                                    initial={{ width: 0 }}
+                                    whileHover={{ width: '100%' }}
+                                    className="absolute -bottom-1 left-0 h-[2px] bg-black dark:bg-white"
+                                />
+                            </span>
+                            <span className="text-[8px] font-black tracking-[0.3em] uppercase opacity-50">Studio</span>
+                        </div>
+                    </Link>
+                </Magnetic>
 
                 <div className="flex items-center gap-2 sm:gap-4">
 
                     {/* Currency Selector */}
                     <div className="relative">
-                        <button
-                            onClick={() => setShowCurrencyMenu(!showCurrencyMenu)}
-                            className="aura-currency-toggle p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium flex items-center gap-1.5"
-                            aria-label="Select currency"
-                        >
-                            <Globe className="h-4 w-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">{currency}</span>
-                            <ChevronDown className={`h-3 w-3 transition-transform ${showCurrencyMenu ? 'rotate-180' : ''}`} />
-                        </button>
+                        <Magnetic strength={0.2}>
+                            <button
+                                onClick={() => setShowCurrencyMenu(!showCurrencyMenu)}
+                                className="aura-currency-toggle p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium flex items-center gap-1.5"
+                                aria-label="Select currency"
+                            >
+                                <Globe className="h-4 w-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">{currency}</span>
+                                <ChevronDown className={`h-3 w-3 transition-transform ${showCurrencyMenu ? 'rotate-180' : ''}`} />
+                            </button>
+                        </Magnetic>
 
                         {showCurrencyMenu && (
                             <div className="aura-currency-dropdown absolute top-full right-0 pt-4 z-50">
@@ -118,78 +142,88 @@ const Navbar = () => {
                     </div>
 
                     {/* Theme Toggle */}
-                    <button
-                        onClick={toggleTheme}
-                        className="p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
-                        aria-label="Toggle theme"
-                    >
-                        {isDark ? (
-                            <Sun className="h-4 w-4" />
-                        ) : (
-                            <Moon className="h-4 w-4" />
-                        )}
-                    </button>
+                    <Magnetic strength={0.2}>
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
+                            aria-label="Toggle theme"
+                        >
+                            {isDark ? (
+                                <Sun className="h-4 w-4" />
+                            ) : (
+                                <Moon className="h-4 w-4" />
+                            )}
+                        </button>
+                    </Magnetic>
 
                     {/* Desktop Only Actions */}
                     {isAuthenticated && (
-                        <button
-                            onClick={() => setOrdersOpen(true)}
-                            className="hidden md:block relative p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
-                            aria-label="Order History"
-                        >
-                            <Package className="h-4 w-4" />
-                        </button>
+                        <Magnetic strength={0.2}>
+                            <button
+                                onClick={() => toggleOrders()}
+                                className="hidden md:block relative p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
+                                aria-label="Order History"
+                            >
+                                <Package className="h-4 w-4" />
+                            </button>
+                        </Magnetic>
                     )}
 
-                    <button
-                        onClick={toggleWishlistSidebar}
-                        className="hidden md:block relative p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
-                    >
-                        <Heart className="h-4 w-4" />
-                        {wishlistItems.length > 0 && (
-                            <span className="absolute -top-1 -right-1 h-4 w-4 bg-black dark:bg-white rounded-full text-[8px] font-black text-white dark:text-black flex items-center justify-center border border-white dark:border-neutral-900">
-                                {wishlistItems.length}
-                            </span>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={() => toggleCheckout(true)}
-                        className="hidden md:block relative p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
-                        aria-label="Cart"
-                    >
-                        <ShoppingCart className="h-4 w-4 text-stone-900 dark:text-white" />
-                        {cartCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-black dark:bg-white text-white dark:text-black text-[8px] font-black rounded-full flex items-center justify-center border border-white dark:border-neutral-900">
-                                {cartCount}
-                            </span>
-                        )}
-                    </button>
-
-                    <div className="relative">
+                    <Magnetic strength={0.2}>
                         <button
-                            onClick={() =>
-                                isAuthenticated ? setShowUserMenu(!showUserMenu) : setAuthOpen(true)
-                            }
-                            className="aura-dropdown-toggle p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
-                            aria-label="User account"
+                            onClick={() => toggleWishlist()}
+                            className="hidden md:block relative p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
                         >
-                            {isAuthenticated ? (
-                                <div className="w-4 h-4 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-[9px] font-black uppercase pointer-events-none overflow-hidden">
-                                    {user?.avatar ? (
-                                        <img
-                                            src={user.avatar}
-                                            alt={user.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        user?.name?.charAt(0) || user?.email?.charAt(0) || "U"
-                                    )}
-                                </div>
-                            ) : (
-                                <User className="h-4 w-4 pointer-events-none" />
+                            <Heart className="h-4 w-4" />
+                            {wishlistItems.length > 0 && (
+                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-black dark:bg-white rounded-full text-[8px] font-black text-white dark:text-black flex items-center justify-center border border-white dark:border-neutral-900">
+                                    {wishlistItems.length}
+                                </span>
                             )}
                         </button>
+                    </Magnetic>
+
+                    <Magnetic strength={0.2}>
+                        <button
+                            onClick={() => toggleCart()}
+                            className="hidden md:block relative p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
+                            aria-label="Cart"
+                        >
+                            <ShoppingCart className="h-4 w-4 text-stone-900 dark:text-white" />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-black dark:bg-white text-white dark:text-black text-[8px] font-black rounded-full flex items-center justify-center border border-white dark:border-neutral-900">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </button>
+                    </Magnetic>
+
+                    <div className="relative">
+                        <Magnetic strength={0.2}>
+                            <button
+                                onClick={() =>
+                                    isAuthenticated ? setShowUserMenu(!showUserMenu) : setAuthOpen(true)
+                                }
+                                className="aura-dropdown-toggle p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
+                                aria-label="User account"
+                            >
+                                {isAuthenticated ? (
+                                    <div className="w-4 h-4 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center text-[9px] font-black uppercase pointer-events-none overflow-hidden">
+                                        {user?.avatar ? (
+                                            <img
+                                                src={user.avatar}
+                                                alt={user.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            user?.name?.charAt(0) || user?.email?.charAt(0) || "U"
+                                        )}
+                                    </div>
+                                ) : (
+                                    <User className="h-4 w-4 pointer-events-none" />
+                                )}
+                            </button>
+                        </Magnetic>
 
                         {/* User Dropdown */}
                         {showUserMenu && isAuthenticated && (
@@ -206,7 +240,7 @@ const Navbar = () => {
                                     <div className="space-y-1">
                                         <button
                                             onClick={() => {
-                                                setProfileOpen(true);
+                                                toggleProfile();
                                                 setShowUserMenu(false);
                                             }}
                                             className="aura-dropdown-item"
@@ -216,7 +250,7 @@ const Navbar = () => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setOrdersOpen(true);
+                                                toggleOrders();
                                                 setShowUserMenu(false);
                                             }}
                                             className="aura-dropdown-item"
@@ -252,6 +286,15 @@ const Navbar = () => {
                             </div>
                         )}
                     </div>
+                    <Magnetic strength={0.2}>
+                        <button
+                            onClick={() => toggleNav(true)}
+                            className="md:hidden p-2.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white transition-all bg-white dark:bg-neutral-900 rounded-xl border border-stone-200 dark:border-neutral-800 hover:shadow-premium"
+                            aria-label="Open navigation menu"
+                        >
+                            <Menu className="h-4 w-4" />
+                        </button>
+                    </Magnetic>
                 </div>
             </div>
         </header>

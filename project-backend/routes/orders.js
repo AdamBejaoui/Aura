@@ -3,7 +3,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Coupon = require('../models/Coupon');
 const { authenticateToken } = require('../middleware/auth');
-const { sendOrderNotification } = require('../utils/emailService');
+const { sendOrderNotification, sendStatusUpdateEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -83,28 +83,70 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get user's orders
+// Get user's orders (paginated)
 router.get('/my-orders', authenticateToken, async (req, res) => {
   try {
-    // Find orders by userId (if registered) or match email if we want to be fancy later
-    // Currently relying on userId being saved with order
-    const orders = await Order.find({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = {
       $or: [
         { userId: req.user.userId },
         { email: req.user.email?.toLowerCase() }
       ]
-    }).sort({ createdAt: -1 });
-    res.json(orders);
+    };
+
+    const [orders, total] = await Promise.all([
+      Order.find(query)
+        .populate('items.productId', 'name images')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Order.countDocuments(query)
+    ]);
+
+    res.json({
+      orders,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Get all orders (admin only)
+// Get all orders (admin only - paginated)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
-    res.json(orders);
+    // Basic role check
+    if (!['admin', 'co-admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await Promise.all([
+      Order.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Order.countDocuments()
+    ]);
+
+    res.json({
+      orders,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -129,6 +171,20 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
+
+    // Notify customer (async)
+    if (['confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+      sendStatusUpdateEmail(order)
+        .then(async () => {
+          await Order.findByIdAndUpdate(order._id, {
+            $push: { notificationHistory: { status, sentAt: new Date(), type: 'email' } }
+          });
+        })
+        .catch(err =>
+          console.error('Failed to send status update email:', err)
+        );
+    }
+
     res.json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
