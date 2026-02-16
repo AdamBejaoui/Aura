@@ -4,9 +4,9 @@ import { ReactNode } from 'react';
 const pageVariants = {
     initial: {
         opacity: 0,
-        y: 20, // Slight slide up
-        filter: 'blur(10px)', // Luxe blur effect on enter
-        scale: 0.98 // Subtle scale up
+        y: 30,
+        filter: 'blur(15px)',
+        scale: 0.95
     },
     animate: {
         opacity: 1,
@@ -14,18 +14,18 @@ const pageVariants = {
         filter: 'blur(0px)',
         scale: 1,
         transition: {
-            duration: 0.6,
-            ease: [0.22, 1, 0.36, 1], // Custom cubic-bezier for "cinematic" ease
-            staggerChildren: 0.1
+            duration: 0.8,
+            ease: [0.16, 1, 0.3, 1], // Aura's signature cinematic ease
+            staggerChildren: 0.15
         }
     },
     exit: {
         opacity: 0,
-        y: -20, // Slide up and out
-        filter: 'blur(10px)',
+        scale: 1.05,
+        filter: 'blur(15px)',
         transition: {
-            duration: 0.4,
-            ease: [0.22, 1, 0.36, 1]
+            duration: 0.5,
+            ease: [0.16, 1, 0.3, 1]
         }
     }
 };

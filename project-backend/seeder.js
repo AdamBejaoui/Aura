@@ -26,6 +26,29 @@ const products = [
         rating: 4.7,
         numReviews: 8
     },
+    {
+        name: "Obsidian Leather Weekender",
+        category: "New Arrivals",
+        price: 550,
+        description: "Full-grain leather travel bag with matte black hardware. Designed for the sophisticated traveler.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.8,
+        numReviews: 5
+    },
+    {
+        name: "Minimalist Chronograph",
+        category: "New Arrivals",
+        price: 380,
+        description: "A stripped-back timepiece featuring a sapphire crystal face and Italian leather strap.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1524592094714-0f0654e20314?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.6,
+        numReviews: 9
+    },
+
     // Wardrobe Staples
     {
         name: "Essential Cashmere Crewneck",
@@ -60,6 +83,29 @@ const products = [
         rating: 4.6,
         numReviews: 31
     },
+    {
+        name: "Merino Wool Turtleneck",
+        category: "Wardrobe Staples",
+        price: 160,
+        description: "Fine-gauge merino wool for layering or wearing solo. Naturally temperature regulating.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1621072118058-193f019389e6?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.9,
+        numReviews: 18
+    },
+    {
+        name: "Tailored Chino Trousers",
+        category: "Wardrobe Staples",
+        price: 140,
+        description: "Versatile trousers cut from stretch-cotton twill. Perfect for office or off-duty days.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1473966968600-fa801b869a1a?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.7,
+        numReviews: 25
+    },
+
     // Statement Pieces
     {
         name: "Velvet Sculpted Blazer",
@@ -83,6 +129,29 @@ const products = [
         rating: 4.8,
         numReviews: 9
     },
+    {
+        name: "Oversized Shearling Coat",
+        category: "Statement Pieces",
+        price: 1100,
+        description: "Statement outerwear piece featuring plush shearling lining and a dramatic oversized collar.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1544923246-77307dd654cb?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 5.0,
+        numReviews: 6
+    },
+    {
+        name: "Avant-Garde Layered Dress",
+        category: "Statement Pieces",
+        price: 520,
+        description: "Architectural silhouette with deconstructed layering. For those who view fashion as art.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.7,
+        numReviews: 11
+    },
+
     // Streetwear
     {
         name: "Heavyweight Graphic Hoodie",
@@ -117,6 +186,29 @@ const products = [
         rating: 4.9,
         numReviews: 27
     },
+    {
+        name: "Oversized Acid Wash Tee",
+        category: "Streetwear",
+        price: 85,
+        description: "Vintage-inspired acid wash finish on heavy jersey cotton. Dropped shoulders for a relaxed fit.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.6,
+        numReviews: 42
+    },
+    {
+        name: "Utility Vest",
+        category: "Streetwear",
+        price: 180,
+        description: "Layering essential with multiple functional pockets and durable nylon construction.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1586550787383-7d22b827e857?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.4,
+        numReviews: 12
+    },
+
     // Evening Luxe
     {
         name: "Midnight Silk Gown",
@@ -139,12 +231,23 @@ const products = [
         inStock: true,
         rating: 4.8,
         numReviews: 7
+    },
+    {
+        name: "Velvet Loafers",
+        category: "Evening Luxe",
+        price: 350,
+        description: "Handcrafted Italian velvet loafers with embroidered detail and leather sole.",
+        currency: "TND",
+        images: ["https://images.unsplash.com/photo-1533055640609-24b498dfd74c?q=80&w=1000&auto=format&fit=crop"],
+        inStock: true,
+        rating: 4.9,
+        numReviews: 10
     }
 ];
 
 const seedDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/aura');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/aura');
         console.log("Connected to MongoDB...");
 
         // Clear existing products

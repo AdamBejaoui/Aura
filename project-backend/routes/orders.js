@@ -1,4 +1,5 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Coupon = require('../models/Coupon');
@@ -232,11 +233,48 @@ router.put('/:id/cancel', authenticateToken, async (req, res) => {
 // Get single order (public for success page)
 router.get('/:id', async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate('items.productId', 'name');
+    const order = await Order.findById(req.params.id)
+      .populate('items.productId', 'name images prices');
+
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
-    res.json(order);
+
+    // Attempt to verify token if present
+    let isAdmin = false;
+    let isOwner = false;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role === 'admin' || decoded.role === 'co-admin') {
+          isAdmin = true;
+        }
+        if (decoded.userId === order.userId?.toString() || decoded.email === order.email) {
+          isOwner = true;
+        }
+      } catch (err) {
+        // Invalid token, ignore and treat as guest
+      }
+    }
+
+    if (isAdmin || isOwner) {
+      return res.json(order);
+    }
+
+    // Public sanitized version for Success page
+    const sanitizedOrder = {
+      _id: order._id,
+      items: order.items,
+      total: order.total,
+      status: order.status,
+      createdAt: order.createdAt,
+      // PII Omitted: fullName, phone, address, email
+    };
+
+    res.json(sanitizedOrder);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

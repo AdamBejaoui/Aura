@@ -23,6 +23,7 @@ import ScrambleText from '../components/common/ScrambleText';
 import Footer from "../components/layout/Footer";
 import FilterSidebar from "../components/common/FilterSidebar";
 import ConfirmationModal from "../components/common/ConfirmationModal";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 import { useWishlistStore } from "../store/wishlistStore";
 import { useAuthStore } from "../store/authStore";
 import { useUIStore } from "../store/uiStore";
@@ -138,6 +139,7 @@ const ProductCard = ({ product, onOpenModal, onAddToCart }: { product: Product; 
     const { toggleItem } = useWishlistStore();
     const wishlistedIds = useWishlistStore(state => state.items.map((item: Product) => item.id));
     const { formatPrice } = useCurrencyStore();
+    const { isAuthenticated, setAuthOpen } = useAuthStore();
 
     // 3D Tilt Logic
     const x = useMotionValue(0);
@@ -209,7 +211,14 @@ const ProductCard = ({ product, onOpenModal, onAddToCart }: { product: Product; 
 
                 <motion.button
                     whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                    onClick={(e) => { e.stopPropagation(); toggleItem(product); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isAuthenticated) {
+                            setAuthOpen(true);
+                            return;
+                        }
+                        toggleItem(product);
+                    }}
                     className={`absolute top-6 right-6 z-10 p-3 rounded-2xl backdrop-blur-xl transition-all ${wishlistedIds.includes(product.id) ? 'bg-black text-white' : 'bg-white/80 dark:bg-neutral-900/80 text-stone-500 border border-white/20'}`}
                 >
                     <Heart className={`w-5 h-5 ${wishlistedIds.includes(product.id) ? 'fill-current' : ''}`} />
@@ -234,6 +243,24 @@ const ProductCard = ({ product, onOpenModal, onAddToCart }: { product: Product; 
         </motion.div>
     );
 };
+
+const ProductCardSkeleton = () => (
+    <div className="space-y-8 animate-pulse">
+        <div className="flex flex-col gap-1 opacity-20">
+            <SkeletonLoader width={80} height={10} variant="text" />
+        </div>
+        <SkeletonLoader className="aspect-[4/5] w-full" />
+        <div className="space-y-4 px-2">
+            <div className="flex justify-between items-start">
+                <div className="space-y-2 flex-1">
+                    <SkeletonLoader width="70%" height={24} variant="text" />
+                    <SkeletonLoader width="40%" height={12} variant="text" />
+                </div>
+                <SkeletonLoader width={60} height={24} variant="text" />
+            </div>
+        </div>
+    </div>
+);
 
 function Home() {
     const navigate = useNavigate();
@@ -405,7 +432,6 @@ function Home() {
         setConfirmationMessage(null);
     };
 
-    if (loading) return <LoadingScreen message="Unveiling Essentials..." />;
     if (error) return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black"><p className="text-gray-600 dark:text-gray-400">{error}</p></div>;
 
     return (
@@ -628,7 +654,13 @@ function Home() {
                     </div>
                 </div>
 
-                {filteredProducts.length === 0 ? (
+                {loading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-10 gap-y-24 mt-20">
+                        {[...Array(8)].map((_, i) => (
+                            <ProductCardSkeleton key={i} />
+                        ))}
+                    </div>
+                ) : filteredProducts.length === 0 ? (
                     <div className="text-center py-20 text-stone-500 uppercase font-black tracking-widest">No archives found.</div>
                 ) : (
                     <div className="space-y-32">

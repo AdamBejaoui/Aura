@@ -1,5 +1,5 @@
 import React, { FormEvent, useMemo, useState } from "react";
-import { X, Phone, MapPin, User, CheckCircle2, CreditCard, Banknote, ShoppingBag, Ticket, Check, Loader2 } from "lucide-react";
+import { X, Phone, MapPin, User, CheckCircle2, CreditCard, Banknote, ShoppingBag, Ticket, Check, Loader2, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import type { CartItem } from "../../../store/cartStore";
@@ -44,7 +44,7 @@ const CartCheckout = ({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, setAuthOpen } = useAuthStore();
   const { formatPrice } = useCurrencyStore();
 
   React.useEffect(() => {
@@ -335,60 +335,78 @@ const CartCheckout = ({
                     <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em]">Logistics</h3>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="flex flex-col gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Identity</label>
-                        <div className="relative">
-                          {user?.avatar ? (
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full overflow-hidden border border-stone-200 dark:border-neutral-700">
-                              <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
-                            </div>
-                          ) : (
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
-                          )}
-                          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="FULL NAME" required className="w-full bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-[1.5rem] pl-12 pr-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white placeholder:text-stone-300" />
+                  {!isAuthenticated ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center bg-stone-50 dark:bg-neutral-800/30 rounded-[2rem] border border-dashed border-stone-200 dark:border-neutral-800">
+                      <div className="w-16 h-16 bg-white dark:bg-neutral-800 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+                        <Lock className="w-8 h-8 text-stone-300 dark:text-stone-600" />
+                      </div>
+                      <h3 className="text-sm font-black uppercase tracking-widest mb-2 text-stone-900 dark:text-white">Member Access Only</h3>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 max-w-[200px] leading-relaxed">
+                        Secure checkout is reserved for registered clientele.
+                      </p>
+                      <button
+                        onClick={() => setAuthOpen(true)}
+                        className="px-8 py-3 bg-stone-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:scale-105 transition-all shadow-xl"
+                      >
+                        Identify Yourself
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      <div className="flex flex-col gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Identity</label>
+                          <div className="relative">
+                            {user?.avatar ? (
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full overflow-hidden border border-stone-200 dark:border-neutral-700">
+                                <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
+                            )}
+                            <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="FULL NAME" required className="w-full bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-[1.5rem] pl-12 pr-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white placeholder:text-stone-300" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Communication</label>
+                          <div className="relative">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
+                            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="PHONE NUMBER" required className="w-full bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-[1.5rem] pl-12 pr-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white placeholder:text-stone-300" />
+                          </div>
                         </div>
                       </div>
+
                       <div className="space-y-2">
-                        <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Communication</label>
+                        <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Destination</label>
                         <div className="relative">
-                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
-                          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="PHONE NUMBER" required className="w-full bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-[1.5rem] pl-12 pr-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white placeholder:text-stone-300" />
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
+                          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="PHYSICAL ADDRESS" required className="w-full bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-[1.5rem] pl-12 pr-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white placeholder:text-stone-300" />
                         </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Destination</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" />
-                        <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="PHYSICAL ADDRESS" required className="w-full bg-stone-50 dark:bg-neutral-800 border border-stone-100 dark:border-neutral-800 rounded-[1.5rem] pl-12 pr-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-stone-900/5 transition-all dark:text-white placeholder:text-stone-300" />
+                      {/* Global preference removed as sizes are now per-item */}
+
+                      <div className="space-y-3">
+                        <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Settlement</label>
+                        <div className="flex flex-col gap-3">
+                          <button type="button" onClick={() => setPaymentMethod('cod')} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${paymentMethod === 'cod' ? 'bg-stone-50 dark:bg-neutral-800/50 border-stone-900 dark:border-white' : 'bg-white dark:bg-neutral-900 border-stone-100 dark:border-neutral-800'}`}>
+                            <div className={`p-2 rounded-xl ${paymentMethod === 'cod' ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'bg-stone-50 dark:bg-neutral-800 text-stone-300'}`}><Banknote className="w-5 h-5" /></div>
+                            <div className="text-left"><span className="block text-[10px] font-black uppercase tracking-tight dark:text-white">Pay on Delivery</span><span className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest">Standard Service</span></div>
+                          </button>
+                          <button type="button" disabled className="flex items-center gap-3 p-3 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-900/50 opacity-50 cursor-not-allowed">
+                            <div className="p-2 rounded-xl bg-stone-50 dark:bg-neutral-950 text-stone-300"><CreditCard className="w-5 h-5" /></div>
+                            <div className="text-left"><span className="block text-[10px] font-black uppercase tracking-tight dark:text-white">Secure Credit</span><span className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest">Soon</span></div>
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Global preference removed as sizes are now per-item */}
+                      {error && <div className="p-3 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/20 text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight text-center">{error}</div>}
 
-                    <div className="space-y-3">
-                      <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">Settlement</label>
-                      <div className="flex flex-col gap-3">
-                        <button type="button" onClick={() => setPaymentMethod('cod')} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${paymentMethod === 'cod' ? 'bg-stone-50 dark:bg-neutral-800/50 border-stone-900 dark:border-white' : 'bg-white dark:bg-neutral-900 border-stone-100 dark:border-neutral-800'}`}>
-                          <div className={`p-2 rounded-xl ${paymentMethod === 'cod' ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'bg-stone-50 dark:bg-neutral-800 text-stone-300'}`}><Banknote className="w-5 h-5" /></div>
-                          <div className="text-left"><span className="block text-[10px] font-black uppercase tracking-tight dark:text-white">Pay on Delivery</span><span className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest">Standard Service</span></div>
-                        </button>
-                        <button type="button" disabled className="flex items-center gap-3 p-3 rounded-2xl border border-stone-100 dark:border-neutral-800 bg-stone-50/50 dark:bg-neutral-900/50 opacity-50 cursor-not-allowed">
-                          <div className="p-2 rounded-xl bg-stone-50 dark:bg-neutral-950 text-stone-300"><CreditCard className="w-5 h-5" /></div>
-                          <div className="text-left"><span className="block text-[10px] font-black uppercase tracking-tight dark:text-white">Secure Credit</span><span className="block text-[8px] font-bold text-stone-400 uppercase tracking-widest">Soon</span></div>
-                        </button>
-                      </div>
-                    </div>
-
-                    {error && <div className="p-3 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/20 text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight text-center">{error}</div>}
-
-                    <button type="submit" disabled={!hasItems || submitting} className="w-full py-4 bg-stone-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-                      {submitting ? "Processing Transaction..." : "Place Shipment Order"}
-                    </button>
-                  </form>
+                      <button type="submit" disabled={!hasItems || submitting} className="w-full py-4 bg-stone-900 dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                        {submitting ? "Processing Transaction..." : "Place Shipment Order"}
+                      </button>
+                    </form>
+                  )}
                 </div>
               </>
             )}
